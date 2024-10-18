@@ -5,14 +5,15 @@
 
 # define the Cpp compiler to use
 CXX = g++
-
+VULKAN_SDK_PATH = /usr/include/vulkan
+VK_EXP_PATH = $VULKAN_SDK/etc/vulkan/explicit_layer.d
 # define any compile-time flags
-CXXFLAGS	:= -std=c++17 -Wall -Wextra -g -O2
+CXXFLAGS	:= -std=c++17 -Wall -Wextra -g -O2 -I $(VULKAN_SDK_PATH) -Wno-narrowing
 
 # define library paths in addition to /usr/lib
 #   if I wanted to include libraries not in /usr/lib I'd specify
 #   their path using -Lpath, something like:
-LFLAGS = -lglfw -lvulkan -ldl -lpthread -lX11 -lXxf86vm -lXrandr -lXi
+LFLAGS = -L $(VULKAN_SDK_PATH) -lglfw -lvulkan -ldl -pthread -lwayland-client 
 
 # define output directory
 OUTPUT	:= output
@@ -48,10 +49,10 @@ MD	:= mkdir -p
 endif
 
 # define any directories containing header files other than /usr/include
-INCLUDES	:= $(patsubst %,-I%, $(INCLUDEDIRS:%/=%))
+INCLUDES	:= $(patsubst %,-I %, $(INCLUDEDIRS:%/=%))
 
 # define the C libs
-LIBS		:= $(patsubst %,-L%, $(LIBDIRS:%/=%))
+LIBS		:= $(patsubst %,-L %, $(LIBDIRS:%/=%))
 
 # define the C source files
 SOURCES		:= $(wildcard $(patsubst %,%/*.cpp, $(SOURCEDIRS)))
@@ -98,5 +99,5 @@ clean:
 	@echo Cleanup complete!
 
 run: all
-	./$(OUTPUTMAIN)
+	./compile.sh && ./$(OUTPUTMAIN)
 	@echo Executing 'run: all' complete!
