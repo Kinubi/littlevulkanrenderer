@@ -1,6 +1,11 @@
 #version 450
 
-layout(location = 0) in vec4 fragColor;
+
 layout(location = 0) out vec4 outColor;
 
-void main() { outColor = fragColor; }
+layout(push_constant) uniform Push {
+	vec2 offset;
+	vec4 color;
+} push;
+
+void main() { outColor = push.color; }

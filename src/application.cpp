@@ -17,6 +17,11 @@
 
 namespace lvr {
 
+struct SimplePushConstantData {
+  glm::vec2 offset;
+  alignas(16) glm::vec4 color;
+};
+
 Application::Application() {
   loadModels();
   createPipelineLayout();
@@ -54,12 +59,19 @@ void Application::loadModels() {
 }
 
 void Application::createPipelineLayout() {
+
+  VkPushConstantRange pushConstantRange{};
+  pushConstantRange.stageFlags =
+      VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT;
+  pushConstantRange.offset = 0;
+  pushConstantRange.size = sizeof(SimplePushConstantData);
+
   VkPipelineLayoutCreateInfo pipelineLayoutInfo{};
   pipelineLayoutInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
   pipelineLayoutInfo.setLayoutCount = 0;
   pipelineLayoutInfo.pSetLayouts = nullptr;
-  pipelineLayoutInfo.pushConstantRangeCount = 0;
-  pipelineLayoutInfo.pPushConstantRanges = nullptr;
+  pipelineLayoutInfo.pushConstantRangeCount = 1;
+  pipelineLayoutInfo.pPushConstantRanges = &pushConstantRange;
 
   if (vkCreatePipelineLayout(lvrDevice.device(), &pipelineLayoutInfo, nullptr,
                              &pipelineLayout) != VK_SUCCESS) {
@@ -154,6 +166,8 @@ void Application::drawFrame() {
 }
 
 void Application::recordCommandBuffer(uint32_t imageIndex) {
+  static int32_t frame = 0;
+  frame = (frame + 1) % 1000;
   VkCommandBufferBeginInfo beginInfo{};
   beginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
 
@@ -171,7 +185,7 @@ void Application::recordCommandBuffer(uint32_t imageIndex) {
   renderPassInfo.renderArea.extent = lvrSwapChain->getSwapChainExtent();
 
   std::array<VkClearValue, 2> clearValues{};
-  clearValues[0].color = {0.1f, .1f, .1f, 1.0f};
+  clearValues[0].color = {0.1f, 0.1f, 0.1f, 1.0f};
   clearValues[1].depthStencil = {1.0f, 0};
   renderPassInfo.clearValueCount = static_cast<uint32_t>(clearValues.size());
   renderPassInfo.pClearValues = clearValues.data();
@@ -193,7 +207,19 @@ void Application::recordCommandBuffer(uint32_t imageIndex) {
 
   lvrPipeline->bind(commandBuffers[imageIndex]);
   lvrModel->bind(commandBuffers[imageIndex]);
-  lvrModel->draw(commandBuffers[imageIndex]);
+
+  for (int32_t j = 0; j < 4; j++) {
+    SimplePushConstantData push{};
+    push.offset = {-0.5f + frame * 0.002f, -0.4f + j * 0.25f};
+    push.color = {0.0f, 0.0f, 0.2f + 0.2f * j, 1.0f};
+
+    vkCmdPushConstants(commandBuffers[imageIndex], pipelineLayout,
+                       VK_SHADER_STAGE_VERTEX_BIT |
+                           VK_SHADER_STAGE_FRAGMENT_BIT,
+                       0, sizeof(SimplePushConstantData), &push);
+
+    lvrModel->draw(commandBuffers[imageIndex]);
+  }
 
   vkCmdEndRenderPass(commandBuffers[imageIndex]);
 
