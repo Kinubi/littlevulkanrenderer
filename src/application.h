@@ -1,7 +1,7 @@
 #pragma once
 
 #include "device.h"
-#include "model.h"
+#include "gameobject.h"
 #include "pipeline.h"
 #include "swapchain.h"
 #include "window.h"
@@ -31,7 +31,7 @@ public:
   void OnUpdate();
 
 private:
-  void loadModels();
+  void loadGameObjects();
   void createPipelineLayout();
   void createPipeline();
   void createCommandBuffers();
@@ -39,6 +39,7 @@ private:
   void drawFrame();
   void recreateSwapChain();
   void recordCommandBuffer(uint32_t imageIndex);
+  void renderGameObjects(VkCommandBuffer commandBuffer);
 
   Window lvrWIndow{WIDTH, HEIGHT, "LVR"};
   Device lvrDevice{lvrWIndow};
@@ -46,7 +47,7 @@ private:
   std::unique_ptr<Pipeline> lvrPipeline;
   VkPipelineLayout pipelineLayout{};
   std::vector<VkCommandBuffer> commandBuffers;
-  std::unique_ptr<Model> lvrModel;
+  std::vector<GameObject> gameObjects;
 };
 
 } // namespace lvr
