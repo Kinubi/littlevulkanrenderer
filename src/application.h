@@ -1,9 +1,10 @@
 #pragma once
 
+#include "camera.h"
 #include "device.h"
 #include "gameobject.h"
-#include "pipeline.h"
-#include "swapchain.h"
+#include "renderer.h"
+#include "simplerendersystem.h"
 #include "window.h"
 
 #include <cstdint>
@@ -32,22 +33,15 @@ public:
 
 private:
   void loadGameObjects();
-  void createPipelineLayout();
-  void createPipeline();
-  void createCommandBuffers();
-  void freeCommandBuffers();
-  void drawFrame();
-  void recreateSwapChain();
-  void recordCommandBuffer(uint32_t imageIndex);
-  void renderGameObjects(VkCommandBuffer commandBuffer);
 
   Window lvrWIndow{WIDTH, HEIGHT, "LVR"};
   Device lvrDevice{lvrWIndow};
-  std::unique_ptr<SwapChain> lvrSwapChain;
-  std::unique_ptr<Pipeline> lvrPipeline;
-  VkPipelineLayout pipelineLayout{};
-  std::vector<VkCommandBuffer> commandBuffers;
+  Renderer lvrRenderer{lvrWIndow, lvrDevice};
+  SimpleRenderSystem simpleRenderSystem{lvrDevice,
+                                        lvrRenderer.getSwapChainRenderPass()};
+
   std::vector<GameObject> gameObjects;
+  Camera camera{};
 };
 
 } // namespace lvr

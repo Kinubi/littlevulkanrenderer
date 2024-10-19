@@ -1,17 +1,21 @@
 #include "application.h"
+
+#include <GLFW/glfw3.h>
+#include <vulkan/vulkan_core.h>
+
+#include <cstdint>
+#include <glm/ext/vector_float3.hpp>
+#include <glm/gtc/constants.hpp>
+#include <glm/trigonometric.hpp>
+#include <vector>
+
 #include "device.h"
 #include "gameobject.h"
 #include "model.h"
 #include "pipeline.h"
+#include "simplerendersystem.h"
 #include "swapchain.h"
 #include "window.h"
-
-#include <GLFW/glfw3.h>
-#include <glm/gtc/constants.hpp>
-
-#include <cstdint>
-#include <vector>
-#include <vulkan/vulkan_core.h>
 
 // std
 #include <array>
@@ -20,230 +24,100 @@
 
 namespace lvr {
 
-struct SimplePushConstantData {
-  glm::mat2 transform{1.0f};
-  glm::vec2 offset;
-  alignas(16) glm::vec4 color;
-};
+Application::Application() { loadGameObjects(); }
 
-Application::Application() {
-  loadGameObjects();
-  createPipelineLayout();
-  recreateSwapChain();
-  createCommandBuffers();
-}
-
-Application::~Application() {
-  vkDestroyPipelineLayout(lvrDevice.device(), pipelineLayout, nullptr);
-}
+Application::~Application() {}
 
 void Application::OnStart() {
+	camera.setViewDirection(glm::vec3{0.0f}, glm::vec3{0.5f, 0.0f, 1.0f});
+	while (!lvrWIndow.shouldClose()) {
+		OnUpdate();
+	}
 
-  while (!lvrWIndow.shouldClose()) {
-
-    OnUpdate();
-  }
-
-  vkDeviceWaitIdle(lvrDevice.device());
+	vkDeviceWaitIdle(lvrDevice.device());
 }
 
 void Application::OnUpdate() {
-  glfwPollEvents();
-  drawFrame();
-  // std::cout << "Updating" << std::endl;
+	glfwPollEvents();
+	float aspect = lvrRenderer.getAspectRatio();
+	// camera.setOrthographicProjection(-aspect, aspect, -1, 1, -1, 1);
+	camera.setPerspectiveProjection(glm::radians(50.0f), aspect, 0.1f, 10.0f);
+	if (auto commandBuffer = lvrRenderer.beginFrame()) {
+		lvrRenderer.beginSwapChainRenderPass(commandBuffer);
+		simpleRenderSystem.renderGameObjects(commandBuffer, gameObjects, camera);
+		lvrRenderer.endSwapChainRenderPass(commandBuffer);
+		lvrRenderer.endFrame();
+	}
+}
+
+// temporary helper function, creates a 1x1x1 cube centered at offset
+std::unique_ptr<Model> createCubeModel(Device &device, glm::vec3 offset) {
+	std::vector<Model::Vertex> vertices{
+
+		// left face (white)
+		{{-.5f, -.5f, -.5f}, {.9f, .9f, .9f, 1.0f}},
+		{{-.5f, .5f, .5f}, {.9f, .9f, .9f, 1.0f}},
+		{{-.5f, -.5f, .5f}, {.9f, .9f, .9f, 1.0f}},
+		{{-.5f, -.5f, -.5f}, {.9f, .9f, .9f, 1.0f}},
+		{{-.5f, .5f, -.5f}, {.9f, .9f, .9f, 1.0f}},
+		{{-.5f, .5f, .5f}, {.9f, .9f, .9f, 1.0f}},
+
+		// right face (yellow)
+		{{.5f, -.5f, -.5f}, {.8f, .8f, .1f, 1.0f}},
+		{{.5f, .5f, .5f}, {.8f, .8f, .1f, 1.0f}},
+		{{.5f, -.5f, .5f}, {.8f, .8f, .1f, 1.0f}},
+		{{.5f, -.5f, -.5f}, {.8f, .8f, .1f, 1.0f}},
+		{{.5f, .5f, -.5f}, {.8f, .8f, .1f, 1.0f}},
+		{{.5f, .5f, .5f}, {.8f, .8f, .1f, 1.0f}},
+
+		// top face (orange, remember y axis points down)
+		{{-.5f, -.5f, -.5f}, {.9f, .6f, .1f, 1.0f}},
+		{{.5f, -.5f, .5f}, {.9f, .6f, .1f, 1.0f}},
+		{{-.5f, -.5f, .5f}, {.9f, .6f, .1f, 1.0f}},
+		{{-.5f, -.5f, -.5f}, {.9f, .6f, .1f, 1.0f}},
+		{{.5f, -.5f, -.5f}, {.9f, .6f, .1f, 1.0f}},
+		{{.5f, -.5f, .5f}, {.9f, .6f, .1f, 1.0f}},
+
+		// bottom face (red)
+		{{-.5f, .5f, -.5f}, {.8f, .1f, .1f, 1.0f}},
+		{{.5f, .5f, .5f}, {.8f, .1f, .1f, 1.0f}},
+		{{-.5f, .5f, .5f}, {.8f, .1f, .1f, 1.0f}},
+		{{-.5f, .5f, -.5f}, {.8f, .1f, .1f, 1.0f}},
+		{{.5f, .5f, -.5f}, {.8f, .1f, .1f, 1.0f}},
+		{{.5f, .5f, .5f}, {.8f, .1f, .1f, 1.0f}},
+
+		// nose face (blue)
+		{{-.5f, -.5f, 0.5f}, {.1f, .1f, .8f, 1.0f}},
+		{{.5f, .5f, 0.5f}, {.1f, .1f, .8f, 1.0f}},
+		{{-.5f, .5f, 0.5f}, {.1f, .1f, .8f, 1.0f}},
+		{{-.5f, -.5f, 0.5f}, {.1f, .1f, .8f, 1.0f}},
+		{{.5f, -.5f, 0.5f}, {.1f, .1f, .8f, 1.0f}},
+		{{.5f, .5f, 0.5f}, {.1f, .1f, .8f, 1.0f}},
+
+		// tail face (green)
+		{{-.5f, -.5f, -0.5f}, {.1f, .8f, .1f, 1.0f}},
+		{{.5f, .5f, -0.5f}, {.1f, .8f, .1f, 1.0f}},
+		{{-.5f, .5f, -0.5f}, {.1f, .8f, .1f, 1.0f}},
+		{{-.5f, -.5f, -0.5f}, {.1f, .8f, .1f, 1.0f}},
+		{{.5f, -.5f, -0.5f}, {.1f, .8f, .1f, 1.0f}},
+		{{.5f, .5f, -0.5f}, {.1f, .8f, .1f, 1.0f}},
+
+	};
+	for (auto &v : vertices) {
+		v.position += offset;
+	}
+	return std::make_unique<Model>(device, vertices);
 }
 
 void Application::loadGameObjects() {
-  std::vector<Model::Vertex> vertices{
-      {{0.0f, -0.5f}, {1.0f, 0.0f, 0.0f, 1.0f}},
-      {{0.5f, 0.5f}, {0.0f, 1.0f, 0.0f, 1.0f}},
-      {{-0.5f, 0.5f}, {0.0f, 0.0f, 1.0f, 0.5f}}};
+	std::shared_ptr<Model> lvrModel = createCubeModel(lvrDevice, {0.0f, 0.0f, 0.0f});
 
-  auto lvrModel = std::make_shared<Model>(lvrDevice, vertices);
+	auto cube = GameObject::createGameObject();
+	cube.model = lvrModel;
+	cube.tranform.translation = {0.0f, 0.0f, 2.5f};
+	cube.tranform.scale = {0.5f, 0.5f, 0.5f};
 
-  auto triangle = GameObject::createGameObject();
-  triangle.model = lvrModel;
-  triangle.color = {0.1f, 0.8f, 0.1f, 1.0f};
-  triangle.tranform2D.translation.x = 0.2f;
-  triangle.tranform2D.scale = {2.0f, 0.5f};
-  triangle.tranform2D.rotation = 0.25f * glm::two_pi<float>();
-
-  gameObjects.push_back(std::move(triangle));
+	gameObjects.push_back(std::move(cube));
 }
 
-void Application::createPipelineLayout() {
-
-  VkPushConstantRange pushConstantRange{};
-  pushConstantRange.stageFlags =
-      VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT;
-  pushConstantRange.offset = 0;
-  pushConstantRange.size = sizeof(SimplePushConstantData);
-
-  VkPipelineLayoutCreateInfo pipelineLayoutInfo{};
-  pipelineLayoutInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
-  pipelineLayoutInfo.setLayoutCount = 0;
-  pipelineLayoutInfo.pSetLayouts = nullptr;
-  pipelineLayoutInfo.pushConstantRangeCount = 1;
-  pipelineLayoutInfo.pPushConstantRanges = &pushConstantRange;
-
-  if (vkCreatePipelineLayout(lvrDevice.device(), &pipelineLayoutInfo, nullptr,
-                             &pipelineLayout) != VK_SUCCESS) {
-    throw std::runtime_error("Failed to create pipeline layout");
-  }
-}
-
-void Application::createPipeline() {
-  assert(lvrSwapChain != nullptr && "Cannot create pipeline before swap chain");
-  assert(pipelineLayout != nullptr &&
-         "Cannot create pipeline before pipeline layout");
-
-  PipelineConfigInfo pipelineConfig{};
-  Pipeline::defaultPipelineConfigInfo(pipelineConfig);
-  pipelineConfig.renderPass = lvrSwapChain->getRenderPass();
-  pipelineConfig.pipelineLayout = pipelineLayout;
-  lvrPipeline = std::make_unique<Pipeline>(
-      lvrDevice, "shaders/simple_shader.vert.spv",
-      "shaders/simple_shader.frag.spv", pipelineConfig);
-}
-
-void Application::recreateSwapChain() {
-  auto extent = lvrWIndow.getExtent();
-  while (extent.width == 0 || extent.height == 0) {
-    extent = lvrWIndow.getExtent();
-    glfwWaitEvents();
-  }
-
-  vkDeviceWaitIdle(lvrDevice.device());
-
-  if (lvrSwapChain == nullptr) {
-
-    lvrSwapChain = std::make_unique<SwapChain>(lvrDevice, extent);
-  } else {
-    lvrSwapChain =
-        std::make_unique<SwapChain>(lvrDevice, extent, std::move(lvrSwapChain));
-    if (lvrSwapChain->imageCount() != commandBuffers.size()) {
-      freeCommandBuffers();
-      createCommandBuffers();
-    }
-  }
-
-  createPipeline();
-}
-
-void Application::createCommandBuffers() {
-  commandBuffers.resize(lvrSwapChain->imageCount());
-  VkCommandBufferAllocateInfo allocInfo{};
-  allocInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
-  allocInfo.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
-  allocInfo.commandPool = lvrDevice.getCommandPool();
-  allocInfo.commandBufferCount = static_cast<uint32_t>(commandBuffers.size());
-
-  if (vkAllocateCommandBuffers(lvrDevice.device(), &allocInfo,
-                               commandBuffers.data()) != VK_SUCCESS) {
-    throw std::runtime_error("Failed to allocate command buffers!");
-  }
-}
-
-void Application::freeCommandBuffers() {
-  vkFreeCommandBuffers(lvrDevice.device(), lvrDevice.getCommandPool(),
-                       static_cast<uint32_t>(commandBuffers.size()),
-                       commandBuffers.data());
-  commandBuffers.clear();
-}
-
-void Application::drawFrame() {
-  uint32_t imageIndex;
-  auto result = lvrSwapChain->acquireNextImage(&imageIndex);
-
-  if (result == VK_ERROR_OUT_OF_DATE_KHR) {
-    recreateSwapChain();
-    return;
-  }
-
-  if (result != VK_SUCCESS && result != VK_SUBOPTIMAL_KHR) {
-    throw std::runtime_error("Failed ot acquire swap chain image!");
-  }
-
-  recordCommandBuffer(imageIndex);
-  result = lvrSwapChain->submitCommandBuffers(&commandBuffers[imageIndex],
-                                              &imageIndex);
-  if (result != VK_SUCCESS && result != VK_SUBOPTIMAL_KHR ||
-      lvrWIndow.wasWindowResized()) {
-    lvrWIndow.resetWindowResizedFlag();
-    recreateSwapChain();
-    return;
-  }
-  if (result != VK_SUCCESS) {
-    throw std::runtime_error("Failed to present swap chain image!");
-  }
-}
-
-void Application::recordCommandBuffer(uint32_t imageIndex) {
-
-  VkCommandBufferBeginInfo beginInfo{};
-  beginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
-
-  if (vkBeginCommandBuffer(commandBuffers[imageIndex], &beginInfo) !=
-      VK_SUCCESS) {
-    throw std::runtime_error("Failed to begin Command Buffer recording!");
-  }
-
-  VkRenderPassBeginInfo renderPassInfo{};
-  renderPassInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
-  renderPassInfo.renderPass = lvrSwapChain->getRenderPass();
-  renderPassInfo.framebuffer = lvrSwapChain->getFrameBuffer(imageIndex);
-
-  renderPassInfo.renderArea.offset = {0, 0};
-  renderPassInfo.renderArea.extent = lvrSwapChain->getSwapChainExtent();
-
-  std::array<VkClearValue, 2> clearValues{};
-  clearValues[0].color = {0.1f, 0.1f, 0.1f, 1.0f};
-  clearValues[1].depthStencil = {1.0f, 0};
-  renderPassInfo.clearValueCount = static_cast<uint32_t>(clearValues.size());
-  renderPassInfo.pClearValues = clearValues.data();
-
-  vkCmdBeginRenderPass(commandBuffers[imageIndex], &renderPassInfo,
-                       VK_SUBPASS_CONTENTS_INLINE);
-
-  VkViewport viewport{};
-  viewport.x = 0.0f;
-  viewport.y = 0.0f;
-  viewport.width = static_cast<float>(lvrSwapChain->getSwapChainExtent().width);
-  viewport.height =
-      static_cast<float>(lvrSwapChain->getSwapChainExtent().height);
-  viewport.minDepth = 0.0f;
-  viewport.maxDepth = 1.0f;
-  VkRect2D scissor{{0, 0}, lvrSwapChain->getSwapChainExtent()};
-  vkCmdSetViewport(commandBuffers[imageIndex], 0, 1, &viewport);
-  vkCmdSetScissor(commandBuffers[imageIndex], 0, 1, &scissor);
-
-  lvrPipeline->bind(commandBuffers[imageIndex]);
-
-  renderGameObjects(commandBuffers[imageIndex]);
-
-  vkCmdEndRenderPass(commandBuffers[imageIndex]);
-
-  if (vkEndCommandBuffer(commandBuffers[imageIndex]) != VK_SUCCESS) {
-    throw std::runtime_error("Failed to end Command Buffer recording!");
-  }
-}
-
-void Application::renderGameObjects(VkCommandBuffer commandBuffer) {
-  lvrPipeline->bind(commandBuffer);
-  for (auto &obj : gameObjects) {
-    obj.tranform2D.rotation =
-        glm::mod(obj.tranform2D.rotation + 0.01f, glm::two_pi<float>());
-    SimplePushConstantData push{};
-    push.offset = obj.tranform2D.translation;
-    push.color = obj.color;
-    push.transform = obj.tranform2D.mat2();
-
-    vkCmdPushConstants(commandBuffer, pipelineLayout,
-                       VK_SHADER_STAGE_VERTEX_BIT |
-                           VK_SHADER_STAGE_FRAGMENT_BIT,
-                       0, sizeof(SimplePushConstantData), &push);
-    obj.model->bind(commandBuffer);
-    obj.model->draw(commandBuffer);
-  }
-}
-} // namespace lvr
+}  // namespace lvr
