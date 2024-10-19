@@ -8,12 +8,27 @@
 #include <iostream>
 #include <limits>
 
+#include <memory>
 #include <stdexcept>
+#include <vulkan/vulkan_core.h>
 
 namespace lvr {
 
 SwapChain::SwapChain(Device &deviceRef, VkExtent2D extent)
     : device{deviceRef}, windowExtent{extent} {
+  init();
+}
+
+SwapChain::SwapChain(Device &deviceRef, VkExtent2D extent,
+                     std::shared_ptr<SwapChain> previous)
+    : device{deviceRef}, windowExtent{extent}, oldSwapchain(previous) {
+  init();
+
+  // clean up old swap chain 
+  oldSwapchain = nullptr;
+}
+
+void SwapChain::init() {
   createSwapChain();
   createImageViews();
   createRenderPass();
@@ -162,7 +177,7 @@ void SwapChain::createSwapChain() {
   createInfo.presentMode = presentMode;
   createInfo.clipped = VK_TRUE;
 
-  createInfo.oldSwapchain = VK_NULL_HANDLE;
+  createInfo.oldSwapchain = oldSwapchain == nullptr ? VK_NULL_HANDLE : oldSwapchain->swapChain;
 
   if (vkCreateSwapchainKHR(device.device(), &createInfo, nullptr, &swapChain) !=
       VK_SUCCESS) {

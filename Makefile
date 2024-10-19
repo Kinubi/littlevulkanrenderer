@@ -30,6 +30,11 @@ LIB		:= lib
 # define appname
 APPNAME := LVR
 
+vertSources = $(shell find shaders -type f -name "*.vert")
+vertObjFiles = $(patsubst %.vert, %.vert.spv, $(vertSources))
+fragSources = $(shell find shaders -type f -name "*.frag")
+fragObjFiles = $(patsubst %.frag, %.frag.spv, $(fragSources))
+
 ifeq ($(OS),Windows_NT)
 MAIN	:= main.exe
 SOURCEDIRS	:= $(SRC)
@@ -40,14 +45,18 @@ RM			:= del /q /f
 MD	:= mkdir
 else
 MAIN	:= $(APPNAME)
+BUILDDIR    := build
 SOURCEDIRS	:= $(shell find $(SRC) -type d)
 INCLUDEDIRS	:= $(shell find $(INCLUDE) -type d)
 LIBDIRS		:= $(shell find $(LIB) -type d)
 FIXPATH = $1
 RM = rm -f
 MD	:= mkdir -p
+SRCEXT:= cpp
+OBJEXT  := o
 endif
 
+$(MAIN): $(vertObjFiles) $(fragObjFiles)
 # define any directories containing header files other than /usr/include
 INCLUDES	:= $(patsubst %,-I %, $(INCLUDEDIRS:%/=%))
 
@@ -58,7 +67,8 @@ LIBS		:= $(patsubst %,-L %, $(LIBDIRS:%/=%))
 SOURCES		:= $(wildcard $(patsubst %,%/*.cpp, $(SOURCEDIRS)))
 
 # define the C object files
-OBJECTS		:= $(SOURCES:.cpp=.o)
+#OBJECTS		:= $(SOURCES:.cpp=.o)
+OBJECTS     := $(patsubst $(SOURCEDIRS)/%,$(BUILDDIR)/%,$(SOURCES:.$(SRCEXT)=.$(OBJEXT)))
 
 # define the dependency output files
 DEPS		:= $(OBJECTS:.o=.d)
@@ -71,7 +81,16 @@ DEPS		:= $(OBJECTS:.o=.d)
 
 OUTPUTMAIN	:= $(call FIXPATH,$(OUTPUT)/$(MAIN))
 
+#Make the Directories
+
+
+# make shader targets
+
+%.spv: %
+	glslc $< -o $@
+
 all: $(OUTPUT) $(MAIN)
+
 	@echo Executing 'all' complete!
 
 $(OUTPUT):
@@ -99,5 +118,5 @@ clean:
 	@echo Cleanup complete!
 
 run: all
-	./compile.sh && ./$(OUTPUTMAIN)
+	./$(OUTPUTMAIN)
 	@echo Executing 'run: all' complete!

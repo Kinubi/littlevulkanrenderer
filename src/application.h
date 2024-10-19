@@ -1,10 +1,12 @@
 #pragma once
 
 #include "device.h"
+#include "model.h"
 #include "pipeline.h"
 #include "swapchain.h"
 #include "window.h"
 
+#include <cstdint>
 #include <vulkan/vulkan_core.h>
 
 // std
@@ -29,17 +31,22 @@ public:
   void OnUpdate();
 
 private:
+  void loadModels();
   void createPipelineLayout();
   void createPipeline();
   void createCommandBuffers();
+  void freeCommandBuffers();
   void drawFrame();
+  void recreateSwapChain();
+  void recordCommandBuffer(uint32_t imageIndex);
+
   Window lvrWIndow{WIDTH, HEIGHT, "LVR"};
   Device lvrDevice{lvrWIndow};
-  SwapChain lvrSwapChain{lvrDevice, lvrWIndow.getExtent()};
+  std::unique_ptr<SwapChain> lvrSwapChain;
   std::unique_ptr<Pipeline> lvrPipeline;
   VkPipelineLayout pipelineLayout{};
   std::vector<VkCommandBuffer> commandBuffers;
+  std::unique_ptr<Model> lvrModel;
 };
 
 } // namespace lvr
-

@@ -9,7 +9,7 @@
 #include <vulkan/vulkan_wayland.h>
 
 namespace lvr {
-Window::Window(int w, int h, std::string name)
+Window::Window(int32_t w, int32_t h, std::string name)
     : width(w), height(h), windowName(name) {
   initWindow();
 }
@@ -34,14 +34,26 @@ void Window::createWindowSurface(VkInstance instance, VkSurfaceKHR *surface) {
     throw std::runtime_error("Failed to create window surface ");
   }
 }
+
 void Window::initWindow() {
   glfwInit();
   glfwWindowHint(GLFW_CLIENT_API, GLFW_NO_API);
-  glfwWindowHint(GLFW_RESIZABLE, GLFW_FALSE);
+  glfwWindowHint(GLFW_RESIZABLE, GLFW_TRUE);
 
   window =
       glfwCreateWindow(width, height, windowName.c_str(), nullptr, nullptr);
 
+  glfwSetWindowUserPointer(window, this);
+  glfwSetFramebufferSizeCallback(window, frameBufferResizeCallback);
   glfwShowWindow(window);
 }
+
+void Window::frameBufferResizeCallback(GLFWwindow *window, int32_t width,
+                                       int32_t height) {
+  auto lvrWindow = reinterpret_cast<Window *>(glfwGetWindowUserPointer(window));
+  lvrWindow->framebufferResized = true;
+  lvrWindow->width = width;
+  lvrWindow->height = height;
+}
+
 } // namespace lvr
