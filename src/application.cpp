@@ -3,7 +3,6 @@
 #include <GLFW/glfw3.h>
 #include <vulkan/vulkan_core.h>
 
-#include <cstdint>
 #include <glm/ext/vector_float3.hpp>
 #include <glm/gtc/constants.hpp>
 #include <glm/trigonometric.hpp>
@@ -11,16 +10,15 @@
 
 #include "device.h"
 #include "gameobject.h"
+#include "keyboard_movement_controller.h"
 #include "model.h"
-#include "pipeline.h"
 #include "simplerendersystem.h"
-#include "swapchain.h"
 #include "window.h"
 
 // std
-#include <array>
+
+#include <chrono>
 #include <memory>
-#include <stdexcept>
 
 namespace lvr {
 
@@ -30,17 +28,27 @@ Application::~Application() {}
 
 void Application::OnStart() {
 	camera.setViewDirection(glm::vec3{0.0f}, glm::vec3{0.5f, 0.0f, 1.0f});
+
+	auto currentTime = std::chrono::high_resolution_clock::now();
 	while (!lvrWIndow.shouldClose()) {
-		OnUpdate();
+		auto newTime = std::chrono::high_resolution_clock::now();
+		float frameTime =
+			std::chrono::duration<float, std::chrono::seconds::period>(newTime - currentTime)
+				.count();
+		currentTime = newTime;
+		OnUpdate(frameTime);
 	}
 
 	vkDeviceWaitIdle(lvrDevice.device());
 }
 
-void Application::OnUpdate() {
+void Application::OnUpdate(float dt) {
 	glfwPollEvents();
+
+	cameraController.moveInPlaneXZ(lvrWIndow.getGLFWWindow(), dt, viewerObject);
+	camera.setViewYXZ(viewerObject.tranform.translation, viewerObject.tranform.rotation);
 	float aspect = lvrRenderer.getAspectRatio();
-	// camera.setOrthographicProjection(-aspect, aspect, -1, 1, -1, 1);
+
 	camera.setPerspectiveProjection(glm::radians(50.0f), aspect, 0.1f, 10.0f);
 	if (auto commandBuffer = lvrRenderer.beginFrame()) {
 		lvrRenderer.beginSwapChainRenderPass(commandBuffer);

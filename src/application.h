@@ -3,6 +3,7 @@
 #include "camera.h"
 #include "device.h"
 #include "gameobject.h"
+#include "keyboard_movement_controller.h"
 #include "renderer.h"
 #include "simplerendersystem.h"
 #include "window.h"
@@ -29,7 +30,7 @@ public:
   Application &operator=(const Application &) = delete;
 
   void OnStart();
-  void OnUpdate();
+  void OnUpdate(float dt);
 
 private:
   void loadGameObjects();
@@ -42,6 +43,9 @@ private:
 
   std::vector<GameObject> gameObjects;
   Camera camera{};
+
+  GameObject viewerObject = GameObject::createGameObject();
+  KeyboardMovementController cameraController{};
 };
 
 } // namespace lvr
