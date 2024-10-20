@@ -8,7 +8,7 @@ CXX = g++
 VULKAN_SDK_PATH = /usr/include/vulkan
 VK_EXP_PATH = $VULKAN_SDK/etc/vulkan/explicit_layer.d
 # define any compile-time flags
-CXXFLAGS	:= -std=c++17 -Wall -Wextra -g -O2 -I $(VULKAN_SDK_PATH) -Wno-narrowing
+CXXFLAGS	:= -std=c++17 -Wall -Wextra -g -O3 -march=x86-64-v3 -mavx2 -I $(VULKAN_SDK_PATH) -Wno-narrowing
 
 # define library paths in addition to /usr/lib
 #   if I wanted to include libraries not in /usr/lib I'd specify
@@ -30,6 +30,8 @@ LIB		:= lib
 # define appname
 APPNAME := LVR
 
+BUILDDIR    := build
+
 vertSources = $(shell find shaders -type f -name "*.vert")
 vertObjFiles = $(patsubst %.vert, %.vert.spv, $(vertSources))
 fragSources = $(shell find shaders -type f -name "*.frag")
@@ -45,7 +47,6 @@ RM			:= del /q /f
 MD	:= mkdir
 else
 MAIN	:= $(APPNAME)
-BUILDDIR    := build
 SOURCEDIRS	:= $(shell find $(SRC) -type d)
 INCLUDEDIRS	:= $(shell find $(INCLUDE) -type d)
 LIBDIRS		:= $(shell find $(LIB) -type d)
@@ -67,8 +68,8 @@ LIBS		:= $(patsubst %,-L %, $(LIBDIRS:%/=%))
 SOURCES		:= $(wildcard $(patsubst %,%/*.cpp, $(SOURCEDIRS)))
 
 # define the C object files
-#OBJECTS		:= $(SOURCES:.cpp=.o)
-OBJECTS     := $(patsubst $(SOURCEDIRS)/%,$(BUILDDIR)/%,$(SOURCES:.$(SRCEXT)=.$(OBJEXT)))
+OBJECTS		:= $(SOURCES:.cpp=.o)
+
 
 # define the dependency output files
 DEPS		:= $(OBJECTS:.o=.d)
@@ -86,15 +87,16 @@ OUTPUTMAIN	:= $(call FIXPATH,$(OUTPUT)/$(MAIN))
 
 # make shader targets
 
-%.spv: %
-	glslc $< -o $@
-
 all: $(OUTPUT) $(MAIN)
 
 	@echo Executing 'all' complete!
 
 $(OUTPUT):
 	$(MD) $(OUTPUT)
+
+%.spv: %
+	glslc $< -o $@
+
 
 $(MAIN): $(OBJECTS)
 	$(CXX) $(CXXFLAGS) $(INCLUDES) -o $(OUTPUTMAIN) $(OBJECTS) $(LFLAGS) $(LIBS)
@@ -107,7 +109,7 @@ $(MAIN): $(OBJECTS)
 # the rule(a .c file) and $@: the name of the target of the rule (a .o file)
 # -MMD generates dependency output files same name as the .o file
 # (see the gnu make manual section about automatic variables)
-.cpp.o:
+.o:.cpp
 	$(CXX) $(CXXFLAGS) $(INCLUDES) -c -MMD $<  -o $@
 
 .PHONY: clean

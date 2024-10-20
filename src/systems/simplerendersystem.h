@@ -4,10 +4,11 @@
 
 #include <cstdint>
 
-#include "camera.h"
-#include "device.h"
-#include "gameobject.h"
-#include "pipeline.h"
+#include "../camera.h"
+#include "../device.h"
+#include "../frameinfo.h"
+#include "../gameobject.h"
+#include "../pipeline.h"
 
 // std
 
@@ -18,17 +19,17 @@ namespace lvr {
 
 class SimpleRenderSystem {
    public:
-	SimpleRenderSystem(Device &device, VkRenderPass renderPass);
+	SimpleRenderSystem(
+		Device &device, VkRenderPass renderPass, VkDescriptorSetLayout globalSetLayout);
 	~SimpleRenderSystem();
 
 	SimpleRenderSystem(const SimpleRenderSystem &) = delete;
 	SimpleRenderSystem &operator=(const SimpleRenderSystem &) = delete;
 
-	void renderGameObjects(
-		VkCommandBuffer commandBuffer, std::vector<GameObject> &gameObjects, const Camera &camera);
+	void renderGameObjects(FrameInfo &frameinfo);
 
    private:
-	void createPipelineLayout();
+	void createPipelineLayout(VkDescriptorSetLayout globalSetLayout);
 	void createPipeline(VkRenderPass renderPass);
 
 	Device &lvrDevice;

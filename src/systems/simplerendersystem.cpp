@@ -6,26 +6,21 @@
 #include <glm/gtc/constants.hpp>
 #include <vector>
 
-#include "camera.h"
-#include "device.h"
-#include "gameobject.h"
-#include "pipeline.h"
-
 // std
 
-#include <memory>
 #include <stdexcept>
 
 namespace lvr {
 
 struct SimplePushConstantData {
-	glm::mat4 transform{1.0f};
-	alignas(16) glm::vec4 color;
+	glm::mat4 modelMatrix{1.0f};
+	glm::mat4 normalMatrix{1.0f};
 };
 
-SimpleRenderSystem::SimpleRenderSystem(Device &device, VkRenderPass renderPass)
+SimpleRenderSystem::SimpleRenderSystem(
+	Device &device, VkRenderPass renderPass, VkDescriptorSetLayout globalSetLayout)
 	: lvrDevice(device) {
-	createPipelineLayout();
+	createPipelineLayout(globalSetLayout);
 	createPipeline(renderPass);
 }
 
@@ -33,16 +28,18 @@ SimpleRenderSystem::~SimpleRenderSystem() {
 	vkDestroyPipelineLayout(lvrDevice.device(), pipelineLayout, nullptr);
 }
 
-void SimpleRenderSystem::createPipelineLayout() {
+void SimpleRenderSystem::createPipelineLayout(VkDescriptorSetLayout globalSetLayout) {
 	VkPushConstantRange pushConstantRange{};
 	pushConstantRange.stageFlags = VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT;
 	pushConstantRange.offset = 0;
 	pushConstantRange.size = sizeof(SimplePushConstantData);
 
+	std::vector<VkDescriptorSetLayout> descriptorSetLayouts{globalSetLayout};
+
 	VkPipelineLayoutCreateInfo pipelineLayoutInfo{};
 	pipelineLayoutInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
-	pipelineLayoutInfo.setLayoutCount = 0;
-	pipelineLayoutInfo.pSetLayouts = nullptr;
+	pipelineLayoutInfo.setLayoutCount = static_cast<uint32_t>(descriptorSetLayouts.size());
+	pipelineLayoutInfo.pSetLayouts = descriptorSetLayouts.data();
 	pipelineLayoutInfo.pushConstantRangeCount = 1;
 	pipelineLayoutInfo.pPushConstantRanges = &pushConstantRange;
 
@@ -57,6 +54,8 @@ void SimpleRenderSystem::createPipeline(VkRenderPass renderPass) {
 
 	PipelineConfigInfo pipelineConfig{};
 	Pipeline::defaultPipelineConfigInfo(pipelineConfig);
+	
+
 	pipelineConfig.renderPass = renderPass;
 	pipelineConfig.pipelineLayout = pipelineLayout;
 	lvrPipeline = std::make_unique<Pipeline>(
@@ -66,29 +65,41 @@ void SimpleRenderSystem::createPipeline(VkRenderPass renderPass) {
 		pipelineConfig);
 }
 
-void SimpleRenderSystem::renderGameObjects(
-	VkCommandBuffer commandBuffer, std::vector<GameObject> &gameObjects, const Camera &camera) {
-	lvrPipeline->bind(commandBuffer);
+void SimpleRenderSystem::renderGameObjects(FrameInfo &frameInfo) {
+	lvrPipeline->bind(frameInfo.commandBuffer);
 
-	auto projectionView = camera.getProjection() * camera.getView();
+	auto projectionView = frameInfo.camera.getProjection() * frameInfo.camera.getView();
 
-	for (auto &obj : gameObjects) {
-		obj.tranform.rotation.y = glm::mod(obj.tranform.rotation.y + 0.001f, glm::two_pi<float>());
-		// obj.tranform.rotation.x = glm::mod(obj.tranform.rotation.x +0.001f,
+	vkCmdBindDescriptorSets(
+		frameInfo.commandBuffer,
+		VK_PIPELINE_BIND_POINT_GRAPHICS,
+		pipelineLayout,
+		0,
+		1,
+		&frameInfo.globalDescriptorSet,
+		0,
+		nullptr);
+
+	for (auto &kv : frameInfo.gameObjects) {
+		auto &obj = kv.second;
+
+		// obj.tranform.rotation.y = glm::mod(obj.tranform.rotation.y + 0.001f,
 		// glm::two_pi<float>());
+		//   obj.tranform.rotation.x = glm::mod(obj.tranform.rotation.x +0.001f,
+		//   glm::two_pi<float>());
 		SimplePushConstantData push{};
-		push.color = obj.color;
-		push.transform = projectionView * obj.tranform.mat4();
+		push.modelMatrix = obj.tranform.mat4();
+		push.normalMatrix = obj.tranform.normalMatrix();
 
 		vkCmdPushConstants(
-			commandBuffer,
+			frameInfo.commandBuffer,
 			pipelineLayout,
 			VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT,
 			0,
 			sizeof(SimplePushConstantData),
 			&push);
-		obj.model->bind(commandBuffer);
-		obj.model->draw(commandBuffer);
+		obj.model->bind(frameInfo.commandBuffer);
+		obj.model->draw(frameInfo.commandBuffer);
 	}
 }
 

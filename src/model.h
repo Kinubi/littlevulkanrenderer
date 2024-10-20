@@ -6,6 +6,7 @@
 #include <glm/ext/vector_float3.hpp>
 #include <memory>
 
+#include "buffer.h"
 #include "device.h"
 
 #define GLM_FORCE_RADIANS
@@ -18,8 +19,8 @@ namespace lvr {
 class Model {
    public:
 	struct Vertex {
-		glm::vec3 position;
-		glm::vec4 color;
+		glm::vec3 position{};
+		glm::vec4 color{};
 		glm::vec3 normal{};
 		glm::vec2 uv{};
 
@@ -55,13 +56,12 @@ class Model {
 	void createIndexBuffers(const std::vector<uint32_t> &indices);
 
 	Device &lvrDevice;
-	VkBuffer vertexBuffer;
-	VkDeviceMemory vertexBufferMemory;
+
+	std::unique_ptr<Buffer> vertexBuffer;
 	uint32_t vertexCount;
 
 	bool hasIndexBuffer = false;
-	VkBuffer indexBuffer;
-	VkDeviceMemory indexBufferMemory;
+	std::unique_ptr<Buffer> indexBuffer;
 	uint32_t indexCount;
 };
 
