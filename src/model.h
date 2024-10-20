@@ -1,44 +1,68 @@
 #pragma once
 
-#include "device.h"
 #include <vulkan/vulkan_core.h>
+
+#include <cstdint>
+#include <glm/ext/vector_float3.hpp>
+#include <memory>
+
+#include "device.h"
 
 #define GLM_FORCE_RADIANS
 #define GLM_FORCE_DEPTH_ZERO_TO_ONE
 #include <glm/glm.hpp>
-
 #include <vector>
 
 namespace lvr {
 
 class Model {
-public:
-  struct Vertex {
-    glm::vec3 position;
-	glm::vec4 color;
+   public:
+	struct Vertex {
+		glm::vec3 position;
+		glm::vec4 color;
+		glm::vec3 normal{};
+		glm::vec2 uv{};
 
-    static std::vector<VkVertexInputBindingDescription>
-    getBindingDescriptions();
-    static std::vector<VkVertexInputAttributeDescription>
-    getAttributeDescriptions();
-  };
+		static std::vector<VkVertexInputBindingDescription> getBindingDescriptions();
+		static std::vector<VkVertexInputAttributeDescription> getAttributeDescriptions();
 
-  Model(Device &device, const std::vector<Vertex> &vertices);
-  ~Model();
+		bool operator==(const Vertex &other) const {
+			return position == other.position && color == other.color && normal == other.normal &&
+				   uv == other.uv;
+		}
+	};
 
-  Model(const Model &) = delete;
-  void operator=(const Model &) = delete;
+	struct Builder {
+		std::vector<Vertex> vertices{};
+		std::vector<uint32_t> indices{};
 
-  void bind(VkCommandBuffer commandBuffer);
-  void draw(VkCommandBuffer commandBuffer);
+		void loadModel(const std::string &filepath);
+	};
 
-private:
-  void createVertexBuffers(const std::vector<Vertex> &vertices);
+	Model(Device &device, const Builder &builder);
+	~Model();
 
-  Device &lvrDevice;
-  VkBuffer vertexBuffer;
-  VkDeviceMemory vertexBufferMemory;
-  uint32_t vertexCount;
+	Model(const Model &) = delete;
+	void operator=(const Model &) = delete;
+
+	static std::unique_ptr<Model> createModelFromFile(Device &device, const std::string &filepath);
+
+	void bind(VkCommandBuffer commandBuffer);
+	void draw(VkCommandBuffer commandBuffer);
+
+   private:
+	void createVertexBuffers(const std::vector<Vertex> &vertices);
+	void createIndexBuffers(const std::vector<uint32_t> &indices);
+
+	Device &lvrDevice;
+	VkBuffer vertexBuffer;
+	VkDeviceMemory vertexBufferMemory;
+	uint32_t vertexCount;
+
+	bool hasIndexBuffer = false;
+	VkBuffer indexBuffer;
+	VkDeviceMemory indexBufferMemory;
+	uint32_t indexCount;
 };
 
-} // namespace lvr
+}  // namespace lvr

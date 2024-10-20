@@ -73,9 +73,9 @@ void SimpleRenderSystem::renderGameObjects(
 	auto projectionView = camera.getProjection() * camera.getView();
 
 	for (auto &obj : gameObjects) {
-		// obj.tranform.rotation.y = glm::mod(obj.tranform.rotation.y + 0.001f,
-		// glm::two_pi<float>()); obj.tranform.rotation.x = glm::mod(obj.tranform.rotation.x +
-		// 0.001f, glm::two_pi<float>());
+		obj.tranform.rotation.y = glm::mod(obj.tranform.rotation.y + 0.001f, glm::two_pi<float>());
+		// obj.tranform.rotation.x = glm::mod(obj.tranform.rotation.x +0.001f,
+		// glm::two_pi<float>());
 		SimplePushConstantData push{};
 		push.color = obj.color;
 		push.transform = projectionView * obj.tranform.mat4();
