@@ -58,5 +58,14 @@ glm::mat3 TransformComponent::normalMatrix() {
 		},
 	};
 }
+GameObject GameObject::makePointLight(float intensity, float radius, glm::vec4 color) {
+	GameObject gameObj = GameObject::createGameObject();
+	gameObj.color = color;
+	gameObj.tranform.scale.x = radius;
+	gameObj.pointLight = std::make_unique<PointLightComponent>();
+	gameObj.pointLight->lightIntensity = intensity;
+
+	return gameObj;
+}
 
 }  // namespace lvr

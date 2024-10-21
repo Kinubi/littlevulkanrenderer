@@ -3,7 +3,10 @@
 #include <GLFW/glfw3.h>
 #include <vulkan/vulkan_core.h>
 
+#include <glm/detail/qualifier.hpp>
+#include <glm/ext/vector_float3.hpp>
 #include <glm/gtc/constants.hpp>
+#include <iostream>
 #include <vector>
 
 // std
@@ -11,6 +14,12 @@
 #include <stdexcept>
 
 namespace lvr {
+
+struct PointLightPushConstants {
+	glm::vec4 position{};
+	glm::vec4 color{};
+	float radius;
+};
 
 PointLightSystem::PointLightSystem(
 	Device &device, VkRenderPass renderPass, VkDescriptorSetLayout globalSetLayout)
@@ -24,10 +33,10 @@ PointLightSystem::~PointLightSystem() {
 }
 
 void PointLightSystem::createPipelineLayout(VkDescriptorSetLayout globalSetLayout) {
-	// VkPushConstantRange pushConstantRange{};
-	// pushConstantRange.stageFlags = VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT;
-	// pushConstantRange.offset = 0;
-	// pushConstantRange.size = sizeof(SimplePushConstantData);
+	VkPushConstantRange pushConstantRange{};
+	pushConstantRange.stageFlags = VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT;
+	pushConstantRange.offset = 0;
+	pushConstantRange.size = sizeof(PointLightPushConstants);
 
 	std::vector<VkDescriptorSetLayout> descriptorSetLayouts{globalSetLayout};
 
@@ -35,8 +44,8 @@ void PointLightSystem::createPipelineLayout(VkDescriptorSetLayout globalSetLayou
 	pipelineLayoutInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
 	pipelineLayoutInfo.setLayoutCount = static_cast<uint32_t>(descriptorSetLayouts.size());
 	pipelineLayoutInfo.pSetLayouts = descriptorSetLayouts.data();
-	pipelineLayoutInfo.pushConstantRangeCount = 0;
-	pipelineLayoutInfo.pPushConstantRanges = nullptr;
+	pipelineLayoutInfo.pushConstantRangeCount = 1;
+	pipelineLayoutInfo.pPushConstantRanges = &pushConstantRange;
 
 	if (vkCreatePipelineLayout(lvrDevice.device(), &pipelineLayoutInfo, nullptr, &pipelineLayout) !=
 		VK_SUCCESS) {
@@ -60,10 +69,29 @@ void PointLightSystem::createPipeline(VkRenderPass renderPass) {
 		pipelineConfig);
 }
 
-void PointLightSystem::renderGameObjects(FrameInfo &frameInfo) {
-	lvrPipeline->bind(frameInfo.commandBuffer);
+void PointLightSystem::update(FrameInfo &frameInfo, GlobalUbo &ubo) {
+	auto rotateLight = glm::rotate(glm::mat4(1.0f), frameInfo.frameTime, {0.0f, -1.0f, 0.0f});
+	int32_t lightIndex = 0;
+	for (auto &kv : frameInfo.gameObjects) {
+		auto &obj = kv.second;
+		if (obj.pointLight == nullptr) continue;
 
-	auto projectionView = frameInfo.camera.getProjection() * frameInfo.camera.getView();
+		assert(lightIndex < MAX_LIGHTS && "Point lights exceed maximum specified");
+
+		obj.tranform.translation =
+			glm::vec3(rotateLight * glm::vec4(obj.tranform.translation, 1.0f));
+		ubo.pointLights[lightIndex].position = glm::vec4(obj.tranform.translation, 1.0f);
+		ubo.pointLights[lightIndex].color =
+			glm::vec4(obj.color.x, obj.color.y, obj.color.z, obj.pointLight->lightIntensity);
+
+		lightIndex++;
+	}
+
+	ubo.numLights = lightIndex;
+}
+
+void PointLightSystem::render(FrameInfo &frameInfo) {
+	lvrPipeline->bind(frameInfo.commandBuffer);
 
 	vkCmdBindDescriptorSets(
 		frameInfo.commandBuffer,
@@ -75,7 +103,26 @@ void PointLightSystem::renderGameObjects(FrameInfo &frameInfo) {
 		0,
 		nullptr);
 
-	vkCmdDraw(frameInfo.commandBuffer, 6, 1, 0, 0);
+	for (auto &kv : frameInfo.gameObjects) {
+		auto &obj = kv.second;
+		if (obj.pointLight == nullptr) continue;
+
+		PointLightPushConstants push{};
+		push.position = glm::vec4(obj.tranform.translation, 1.0f);
+		push.color =
+			glm::vec4(obj.color.x, obj.color.y, obj.color.z, obj.pointLight->lightIntensity);
+		push.radius = obj.tranform.scale.x;
+
+		vkCmdPushConstants(
+			frameInfo.commandBuffer,
+			pipelineLayout,
+			VK_SHADER_STAGE_FRAGMENT_BIT | VK_SHADER_STAGE_VERTEX_BIT,
+			0,
+			sizeof(PointLightPushConstants),
+			&push);
+
+		vkCmdDraw(frameInfo.commandBuffer, 6, 1, 0, 0);
+	}
 }
 
 }  // namespace lvr

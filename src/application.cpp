@@ -4,7 +4,9 @@
 #include <vulkan/vulkan_core.h>
 
 #include <cstdint>
+#include <glm/ext/quaternion_transform.hpp>
 #include <glm/ext/vector_float3.hpp>
+#include <glm/fwd.hpp>
 #include <glm/geometric.hpp>
 #include <glm/gtc/constants.hpp>
 #include <glm/trigonometric.hpp>
@@ -14,6 +16,7 @@
 #include "device.h"
 #include "frameinfo.h"
 #include "gameobject.h"
+#include "iostream"
 #include "keyboard_movement_controller.h"
 #include "model.h"
 #include "swapchain.h"
@@ -110,15 +113,18 @@ void Application::OnUpdate(float dt) {
 			gameObjects};
 
 		// update
+
 		GlobalUbo ubo{};
 		ubo.projectionMatrix = camera.getProjection();
 		ubo.viewMatrix = camera.getView();
+		pointLightSystem->update(frameInfo, ubo);
+
 		uboBuffers[frameIndex]->writeToBuffer(&ubo);
 		uboBuffers[frameIndex]->flush();
 
 		lvrRenderer.beginSwapChainRenderPass(commandBuffer);
 		simpleRenderSystem->renderGameObjects(frameInfo);
-		pointLightSystem->renderGameObjects(frameInfo);
+		pointLightSystem->render(frameInfo);
 		lvrRenderer.endSwapChainRenderPass(commandBuffer);
 		lvrRenderer.endFrame();
 	}
@@ -153,6 +159,28 @@ void Application::loadGameObjects() {
 	quadObject.tranform.scale = {1.5f, 1.5f, 1.5f};
 
 	gameObjects.emplace(quadObject.getId(), std::move(quadObject));
+
+	std::vector<glm::vec3> lightColors{
+		{1.f, .1f, .1f},
+		{.1f, .1f, 1.f},
+		{.1f, 1.f, .1f},
+		{1.f, 1.f, .1f},
+		{.1f, 1.f, 1.f},
+		{1.f, 1.f, 1.f}	 //
+	};
+
+	for (int32_t i = 0; i < lightColors.size(); i++) {
+		auto pointLight = GameObject::makePointLight(0.2f);
+		pointLight.color = glm::vec4(lightColors[i], 1.0f);
+		auto rotateLight = glm::rotate(
+			glm::mat4(1.0f),
+			(i * glm::two_pi<float>()) / lightColors.size(),
+			{0.0f, -1.0f, 0.0f});
+
+		pointLight.tranform.translation =
+			glm::vec3(rotateLight * glm::vec4(-1.0f, -1.0f, -1.0f, 1.0f));
+		gameObjects.emplace(pointLight.getId(), std::move(pointLight));
+	}
 }
 
 }  // namespace lvr

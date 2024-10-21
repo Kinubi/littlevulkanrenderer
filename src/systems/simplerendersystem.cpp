@@ -4,6 +4,7 @@
 #include <vulkan/vulkan_core.h>
 
 #include <glm/gtc/constants.hpp>
+#include <iostream>
 #include <vector>
 
 // std
@@ -54,7 +55,6 @@ void SimpleRenderSystem::createPipeline(VkRenderPass renderPass) {
 
 	PipelineConfigInfo pipelineConfig{};
 	Pipeline::defaultPipelineConfigInfo(pipelineConfig);
-	
 
 	pipelineConfig.renderPass = renderPass;
 	pipelineConfig.pipelineLayout = pipelineLayout;
@@ -82,7 +82,7 @@ void SimpleRenderSystem::renderGameObjects(FrameInfo &frameInfo) {
 
 	for (auto &kv : frameInfo.gameObjects) {
 		auto &obj = kv.second;
-
+		if (obj.model == nullptr) continue;
 		// obj.tranform.rotation.y = glm::mod(obj.tranform.rotation.y + 0.001f,
 		// glm::two_pi<float>());
 		//   obj.tranform.rotation.x = glm::mod(obj.tranform.rotation.x +0.001f,
@@ -98,6 +98,7 @@ void SimpleRenderSystem::renderGameObjects(FrameInfo &frameInfo) {
 			0,
 			sizeof(SimplePushConstantData),
 			&push);
+
 		obj.model->bind(frameInfo.commandBuffer);
 		obj.model->draw(frameInfo.commandBuffer);
 	}

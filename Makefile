@@ -30,8 +30,6 @@ LIB		:= lib
 # define appname
 APPNAME := LVR
 
-BUILDDIR    := build
-
 vertSources = $(shell find shaders -type f -name "*.vert")
 vertObjFiles = $(patsubst %.vert, %.vert.spv, $(vertSources))
 fragSources = $(shell find shaders -type f -name "*.frag")
@@ -47,6 +45,7 @@ RM			:= del /q /f
 MD	:= mkdir
 else
 MAIN	:= $(APPNAME)
+BUILDDIR    := build
 SOURCEDIRS	:= $(shell find $(SRC) -type d)
 INCLUDEDIRS	:= $(shell find $(INCLUDE) -type d)
 LIBDIRS		:= $(shell find $(LIB) -type d)
@@ -68,8 +67,8 @@ LIBS		:= $(patsubst %,-L %, $(LIBDIRS:%/=%))
 SOURCES		:= $(wildcard $(patsubst %,%/*.cpp, $(SOURCEDIRS)))
 
 # define the C object files
-OBJECTS		:= $(SOURCES:.cpp=.o)
-
+#OBJECTS		:= $(SOURCES:.cpp=.o)
+OBJECTS     := $(patsubst $(SOURCEDIRS)/%,$(BUILDDIR)/%,$(SOURCES:.$(SRCEXT)=.$(OBJEXT)))
 
 # define the dependency output files
 DEPS		:= $(OBJECTS:.o=.d)
@@ -87,16 +86,15 @@ OUTPUTMAIN	:= $(call FIXPATH,$(OUTPUT)/$(MAIN))
 
 # make shader targets
 
+%.spv: %
+	glslc $< -o $@
+
 all: $(OUTPUT) $(MAIN)
 
 	@echo Executing 'all' complete!
 
 $(OUTPUT):
 	$(MD) $(OUTPUT)
-
-%.spv: %
-	glslc $< -o $@
-
 
 $(MAIN): $(OBJECTS)
 	$(CXX) $(CXXFLAGS) $(INCLUDES) -o $(OUTPUTMAIN) $(OBJECTS) $(LFLAGS) $(LIBS)
@@ -109,7 +107,7 @@ $(MAIN): $(OBJECTS)
 # the rule(a .c file) and $@: the name of the target of the rule (a .o file)
 # -MMD generates dependency output files same name as the .o file
 # (see the gnu make manual section about automatic variables)
-.o:.cpp
+.cpp.o:
 	$(CXX) $(CXXFLAGS) $(INCLUDES) -c -MMD $<  -o $@
 
 .PHONY: clean

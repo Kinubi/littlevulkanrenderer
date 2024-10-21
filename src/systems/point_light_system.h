@@ -26,7 +26,9 @@ class PointLightSystem {
 	PointLightSystem(const PointLightSystem &) = delete;
 	PointLightSystem &operator=(const PointLightSystem &) = delete;
 
-	void renderGameObjects(FrameInfo &frameinfo);
+	void update(FrameInfo &frameInfo, GlobalUbo &ubo);
+
+	void render(FrameInfo &frameinfo);
 
    private:
 	void createPipelineLayout(VkDescriptorSetLayout globalSetLayout);

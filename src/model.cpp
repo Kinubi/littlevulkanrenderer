@@ -113,6 +113,7 @@ void Model::draw(VkCommandBuffer commandBuffer) {
 
 void Model::bind(VkCommandBuffer commandBuffer) {
 	VkBuffer buffers[] = {vertexBuffer->getBuffer()};
+
 	VkDeviceSize offsets[] = {0};
 	vkCmdBindVertexBuffers(commandBuffer, 0, 1, buffers, offsets);
 
