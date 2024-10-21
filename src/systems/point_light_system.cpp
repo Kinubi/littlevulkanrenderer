@@ -7,6 +7,7 @@
 #include <glm/ext/vector_float3.hpp>
 #include <glm/gtc/constants.hpp>
 #include <iostream>
+#include <map>
 #include <vector>
 
 // std
@@ -58,6 +59,7 @@ void PointLightSystem::createPipeline(VkRenderPass renderPass) {
 
 	PipelineConfigInfo pipelineConfig{};
 	Pipeline::defaultPipelineConfigInfo(pipelineConfig);
+	Pipeline::enableAlphaBlending(pipelineConfig);
 	pipelineConfig.attributeDescriptions.clear();
 	pipelineConfig.bindingDescriptions.clear();
 	pipelineConfig.renderPass = renderPass;
@@ -91,6 +93,16 @@ void PointLightSystem::update(FrameInfo &frameInfo, GlobalUbo &ubo) {
 }
 
 void PointLightSystem::render(FrameInfo &frameInfo) {
+	std::map<float, GameObject::id_t> sorted;
+	for (auto &kv : frameInfo.gameObjects) {
+		auto &obj = kv.second;
+		if (obj.pointLight == nullptr) continue;
+
+		// calc dist
+		auto offset = frameInfo.camera.getCameraPosition() - obj.tranform.translation;
+		float distSquared = glm::dot(offset, offset);
+		sorted[distSquared] = obj.getId();
+	}
 	lvrPipeline->bind(frameInfo.commandBuffer);
 
 	vkCmdBindDescriptorSets(
@@ -103,9 +115,8 @@ void PointLightSystem::render(FrameInfo &frameInfo) {
 		0,
 		nullptr);
 
-	for (auto &kv : frameInfo.gameObjects) {
-		auto &obj = kv.second;
-		if (obj.pointLight == nullptr) continue;
+	for (auto it = sorted.rbegin(); it != sorted.rend(); ++it) {
+		auto &obj = frameInfo.gameObjects.at(it->second);
 
 		PointLightPushConstants push{};
 		push.position = glm::vec4(obj.tranform.translation, 1.0f);
