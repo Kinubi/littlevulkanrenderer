@@ -4,15 +4,12 @@
 
 #include <cstdint>
 #include <glm/ext/vector_float3.hpp>
+#include <glm/glm.hpp>
 #include <memory>
+#include <vector>
 
 #include "buffer.h"
 #include "device.h"
-
-#define GLM_FORCE_RADIANS
-#define GLM_FORCE_DEPTH_ZERO_TO_ONE
-#include <glm/glm.hpp>
-#include <vector>
 
 namespace lvr {
 

@@ -1,8 +1,6 @@
 #pragma once
 
 #include <glm/ext/vector_float3.hpp>
-#define GLM_FORCE_RADIANS
-#define GLM_FORCE_DEPTH_ZERO_TO_ONE
 #include <glm/glm.hpp>
 
 namespace lvr {

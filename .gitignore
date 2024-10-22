@@ -2,3 +2,4 @@
 *.d
 *.spv
 LVR
+.vscode/launch.json

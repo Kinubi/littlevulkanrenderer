@@ -161,6 +161,17 @@ void Application::loadGameObjects() {
 
 	gameObjects.emplace(quadObject.getId(), std::move(quadObject));
 
+	std::shared_ptr<Model> humanModel =
+		Model::createModelFromFile(lvrDevice, "models/FinalBaseMesh.obj");
+
+	auto humanObject = GameObject::createGameObject();
+	humanObject.model = humanModel;
+	humanObject.tranform.translation = {0.0f, 0.5f, 0.0f};
+	humanObject.tranform.rotation = {0.0f, 0.0f, 0.5 * glm::two_pi<float>()};
+	humanObject.tranform.scale = {0.1f, 0.1f, 0.1};
+
+	gameObjects.emplace(humanObject.getId(), std::move(humanObject));
+
 	std::vector<glm::vec3> lightColors{
 		{1.f, .1f, .1f},
 		{.1f, .1f, 1.f},
