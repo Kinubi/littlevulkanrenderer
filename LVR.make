@@ -20,11 +20,11 @@ endif
 
 RESCOMP = windres
 DEFINES += -DGLM_FORCE_RADIANS -DGLM_FORCE_DEPTH_ZERO_TO_ONE -DGLM_ENABLE_EXPERIMENTAL -DHZ_PLATFORM_LINUX -D__EMULATE_UUID -DBACKWARD_HAS_DW -DBACKWARD_HAS_LIBUNWIND
-INCLUDES += -Isrc -Iinclude
+INCLUDES += -Isrc -Iinclude -IInclude
 FORCE_INCLUDE +=
 ALL_CPPFLAGS += $(CPPFLAGS) -MD -MP $(DEFINES) $(INCLUDES)
 ALL_RESFLAGS += $(RESFLAGS) $(DEFINES) $(INCLUDES)
-LIBS += -ldw -ldl -lunwind -lpthread -lvulkan -lglfw -lwayland-client
+LIBS += -lshaderc_shared -lspirv-cross-core -lspirv-cross-glsl -ldw -ldl -lunwind -lpthread -lvulkan -lglfw -lwayland-client
 LDDEPS +=
 LINKCMD = $(CXX) -o "$@" $(OBJECTS) $(RESOURCES) $(ALL_LDFLAGS) $(LIBS)
 define PREBUILDCMDS
@@ -59,14 +59,9 @@ endif
 # File sets
 # #############################################
 
-CUSTOM :=
 GENERATED :=
 OBJECTS :=
 
-CUSTOM += shaders/point_light.frag.spv
-CUSTOM += shaders/point_light.vert.spv
-CUSTOM += shaders/simple_shader.frag.spv
-CUSTOM += shaders/simple_shader.vert.spv
 GENERATED += $(OBJDIR)/application.o
 GENERATED += $(OBJDIR)/buffer.o
 GENERATED += $(OBJDIR)/camera.o
@@ -79,14 +74,11 @@ GENERATED += $(OBJDIR)/model.o
 GENERATED += $(OBJDIR)/pipeline.o
 GENERATED += $(OBJDIR)/point_light_system.o
 GENERATED += $(OBJDIR)/renderer.o
+GENERATED += $(OBJDIR)/shader.o
 GENERATED += $(OBJDIR)/simplerendersystem.o
 GENERATED += $(OBJDIR)/swapchain.o
 GENERATED += $(OBJDIR)/waylandwindow.o
 GENERATED += $(OBJDIR)/window.o
-GENERATED += shaders/point_light.frag.spv
-GENERATED += shaders/point_light.vert.spv
-GENERATED += shaders/simple_shader.frag.spv
-GENERATED += shaders/simple_shader.vert.spv
 OBJECTS += $(OBJDIR)/application.o
 OBJECTS += $(OBJDIR)/buffer.o
 OBJECTS += $(OBJDIR)/camera.o
@@ -99,6 +91,7 @@ OBJECTS += $(OBJDIR)/model.o
 OBJECTS += $(OBJDIR)/pipeline.o
 OBJECTS += $(OBJDIR)/point_light_system.o
 OBJECTS += $(OBJDIR)/renderer.o
+OBJECTS += $(OBJDIR)/shader.o
 OBJECTS += $(OBJDIR)/simplerendersystem.o
 OBJECTS += $(OBJDIR)/swapchain.o
 OBJECTS += $(OBJDIR)/waylandwindow.o
@@ -110,7 +103,7 @@ OBJECTS += $(OBJDIR)/window.o
 all: $(TARGET)
 	@:
 
-$(TARGET): $(CUSTOM) $(GENERATED) $(OBJECTS) $(LDDEPS) | $(TARGETDIR)
+$(TARGET): $(GENERATED) $(OBJECTS) $(LDDEPS) | $(TARGETDIR)
 	$(PRELINKCMDS)
 	@echo Linking LVR
 	$(SILENT) $(LINKCMD)
@@ -147,7 +140,6 @@ endif
 prebuild: | $(OBJDIR)
 	$(PREBUILDCMDS)
 
-$(CUSTOM): | prebuild
 ifneq (,$(PCH))
 $(OBJECTS): $(GCH) | $(PCH_PLACEHOLDER)
 $(GCH): $(PCH) | prebuild
@@ -167,14 +159,6 @@ endif
 # File Rules
 # #############################################
 
-shaders/point_light.frag.spv: shaders/point_light.frag
-	$(SILENT) "glslc" "shaders/point_light.frag" -o "shaders/point_light.frag.spv"
-shaders/point_light.vert.spv: shaders/point_light.vert
-	$(SILENT) "glslc" "shaders/point_light.vert" -o "shaders/point_light.vert.spv"
-shaders/simple_shader.frag.spv: shaders/simple_shader.frag
-	$(SILENT) "glslc" "shaders/simple_shader.frag" -o "shaders/simple_shader.frag.spv"
-shaders/simple_shader.vert.spv: shaders/simple_shader.vert
-	$(SILENT) "glslc" "shaders/simple_shader.vert" -o "shaders/simple_shader.vert.spv"
 $(OBJDIR)/application.o: src/application.cpp
 	@echo "$(notdir $<)"
 	$(SILENT) $(CXX) $(ALL_CXXFLAGS) $(FORCE_INCLUDE) -o "$@" -MF "$(@:%.o=%.d)" -c "$<"
@@ -209,6 +193,9 @@ $(OBJDIR)/waylandwindow.o: src/platform/waylandwindow.cpp
 	@echo "$(notdir $<)"
 	$(SILENT) $(CXX) $(ALL_CXXFLAGS) $(FORCE_INCLUDE) -o "$@" -MF "$(@:%.o=%.d)" -c "$<"
 $(OBJDIR)/renderer.o: src/renderer.cpp
+	@echo "$(notdir $<)"
+	$(SILENT) $(CXX) $(ALL_CXXFLAGS) $(FORCE_INCLUDE) -o "$@" -MF "$(@:%.o=%.d)" -c "$<"
+$(OBJDIR)/shader.o: src/shaders/shader.cpp
 	@echo "$(notdir $<)"
 	$(SILENT) $(CXX) $(ALL_CXXFLAGS) $(FORCE_INCLUDE) -o "$@" -MF "$(@:%.o=%.d)" -c "$<"
 $(OBJDIR)/swapchain.o: src/swapchain.cpp

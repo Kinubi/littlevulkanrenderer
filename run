@@ -1,0 +1,1 @@
+$_EXEC mangohud bin/$@-linux-x86_64/LVR/LVR

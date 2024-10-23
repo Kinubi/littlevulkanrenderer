@@ -4,7 +4,7 @@
       "name": "linux-gcc-x64",
       "includePath": [
         "${workspaceFolder}/**",
-		"LVR/include"      ],
+		"LVR/include"],
       "compilerPath": "/usr/bin/gcc",
       "cStandard": "${default}",
       "cppStandard": "${default}",
