@@ -77,6 +77,7 @@ GENERATED += $(OBJDIR)/renderer.o
 GENERATED += $(OBJDIR)/shader.o
 GENERATED += $(OBJDIR)/simplerendersystem.o
 GENERATED += $(OBJDIR)/swapchain.o
+GENERATED += $(OBJDIR)/texture.o
 GENERATED += $(OBJDIR)/waylandwindow.o
 GENERATED += $(OBJDIR)/window.o
 OBJECTS += $(OBJDIR)/application.o
@@ -94,6 +95,7 @@ OBJECTS += $(OBJDIR)/renderer.o
 OBJECTS += $(OBJDIR)/shader.o
 OBJECTS += $(OBJDIR)/simplerendersystem.o
 OBJECTS += $(OBJDIR)/swapchain.o
+OBJECTS += $(OBJDIR)/texture.o
 OBJECTS += $(OBJDIR)/waylandwindow.o
 OBJECTS += $(OBJDIR)/window.o
 
@@ -205,6 +207,9 @@ $(OBJDIR)/point_light_system.o: src/systems/point_light_system.cpp
 	@echo "$(notdir $<)"
 	$(SILENT) $(CXX) $(ALL_CXXFLAGS) $(FORCE_INCLUDE) -o "$@" -MF "$(@:%.o=%.d)" -c "$<"
 $(OBJDIR)/simplerendersystem.o: src/systems/simplerendersystem.cpp
+	@echo "$(notdir $<)"
+	$(SILENT) $(CXX) $(ALL_CXXFLAGS) $(FORCE_INCLUDE) -o "$@" -MF "$(@:%.o=%.d)" -c "$<"
+$(OBJDIR)/texture.o: src/textures/texture.cpp
 	@echo "$(notdir $<)"
 	$(SILENT) $(CXX) $(ALL_CXXFLAGS) $(FORCE_INCLUDE) -o "$@" -MF "$(@:%.o=%.d)" -c "$<"
 $(OBJDIR)/window.o: src/window.cpp

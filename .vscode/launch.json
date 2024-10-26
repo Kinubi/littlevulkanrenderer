@@ -13,7 +13,7 @@
       "linux": {
         "MIMode": "gdb",
         "miDebuggerPath": "gdb",
-        "program": "${workspaceFolder}/output/main"
+        "program": "${workspaceFolder}/bin/Debug-linux-x86_64/LVR/LVR"
       },
       "osx": {
         "MIMode": "lldb",
@@ -25,26 +25,33 @@
         "miDebuggerPath": "gdb.exe",
         "program": "${workspaceFolder}/output/main.exe"
       },
-      "preLaunchTask": "build"
+      "preLaunchTask": "build debug"
     },
     {
-      "name": "C/C++ Runner: Debug Session",
+      "name": "Run",
       "type": "cppdbg",
       "request": "launch",
       "args": [],
       "stopAtEntry": false,
+      "cwd": "${workspaceFolder}",
+      "environment": [],
       "externalConsole": false,
-      "cwd": "/home/barend/repos/lvr/src",
-      "program": "/home/barend/repos/lvr/src/build/Debug/outDebug",
-      "MIMode": "gdb",
-      "miDebuggerPath": "gdb",
-      "setupCommands": [
-        {
-          "description": "Enable pretty-printing for gdb",
-          "text": "-enable-pretty-printing",
-          "ignoreFailures": true
-        }
-      ]
-    }
+      "linux": {
+        "MIMode": "gdb",
+        "miDebuggerPath": "gdb",
+        "program": "${workspaceFolder}/bin/Release-linux-x86_64/LVR/LVR"
+      },
+      "osx": {
+        "MIMode": "lldb",
+        "miDebuggerPath": "lldb-mi",
+        "program": "${workspaceFolder}/output/main"
+      },
+      "windows": {
+        "MIMode": "gdb",
+        "miDebuggerPath": "gdb.exe",
+        "program": "${workspaceFolder}/output/main.exe"
+      },
+      "preLaunchTask": "build release"
+    },
   ]
 }

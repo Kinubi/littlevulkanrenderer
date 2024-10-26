@@ -64,7 +64,7 @@ static void CreateCacheDirectoryIfNeeded() {
 }
 }  // namespace Utils
 
-Shader::Shader(const std::string& filePath) {
+Shader::Shader(Device& device, const std::string& filePath) : device(device) {
 	Utils::CreateCacheDirectoryIfNeeded();
 	source.filePath = filePath;
 
@@ -74,7 +74,7 @@ Shader::Shader(const std::string& filePath) {
 	CompileOrGetVulkanBinaries(source);
 }
 
-Shader::~Shader() {}
+Shader::~Shader() { vkDestroyShaderModule(device.device(), shaderInfo.shaderModule, nullptr); }
 
 std::string Shader::ReadFile(const std::string& filepath) {
 	std::string result{};
@@ -169,7 +169,7 @@ void Shader::Reflect(Source& source) {
 }
 
 std::unique_ptr<Shader> Shader::Create(Device& device, const std::string& filepath) {
-	std::unique_ptr<Shader> shader = std::make_unique<Shader>(Shader(filepath));
+	std::unique_ptr<Shader> shader = std::make_unique<Shader>(Shader(device, filepath));
 
 	shader->shaderInfo.createInfo.sType = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO;
 	shader->shaderInfo.createInfo.codeSize = 4 * shader->source.m_VulkanSPIRV.size();
@@ -189,7 +189,7 @@ std::unique_ptr<Shader> Shader::Create(Device& device, const std::string& filepa
 	shader->shaderInfo.shaderCreateInfo.module = shader->shaderInfo.shaderModule;
 	shader->shaderInfo.shaderCreateInfo.pName = "main";
 	shader->shaderInfo.shaderCreateInfo.flags = 0;
-	shader->shaderInfo.shaderCreateInfo.pNext = nullptr;
+	shader->shaderInfo.shaderCreateInfo.pNext = VK_NULL_HANDLE;
 
 	return shader;
 }
@@ -201,6 +201,7 @@ std::vector<std::unique_ptr<Shader>> Shader::Create(
 	for (auto filePath : filePaths) {
 		shaders.push_back(Create(device, filePath));
 	}
+	// std::cout << shaders[1]->shaderInfo.shaderCreateInfo.pNext << std::endl;
 	return shaders;
 }
 

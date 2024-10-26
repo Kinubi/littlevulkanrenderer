@@ -2,6 +2,8 @@
 
 set -e
 
+export BUILD_CONFIG=$1
+
 if [ -n "${BUILD_CONFIG+set}" ]
 	then
 		true
@@ -12,4 +14,4 @@ fi
 
 # Build LVR
 	premake5 gmake2 --cc=gcc --verbose
-	make config=$(echo "$BUILD_CONFIG" | tr '[:upper:]' '[:lower:]') "$@"
+	make config=$(echo "$BUILD_CONFIG" | tr '[:upper:]' '[:lower:]') "$2"

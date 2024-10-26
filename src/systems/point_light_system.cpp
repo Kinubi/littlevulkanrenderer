@@ -67,7 +67,7 @@ void PointLightSystem::createPipeline(VkRenderPass renderPass) {
 	pipelineConfig.pipelineLayout = pipelineLayout;
 	lvrPipeline = std::make_unique<Pipeline>(
 		lvrDevice,
-		(const std::vector<std::string>){"shaders/point_light.vert", "shaders/point_light.frag"},
+		std::vector<std::string>{"shaders/point_light.vert", "shaders/point_light.frag"},
 		pipelineConfig);
 }
 
