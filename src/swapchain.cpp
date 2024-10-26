@@ -389,7 +389,10 @@ VkSurfaceFormatKHR SwapChain::chooseSwapSurfaceFormat(
 	const std::vector<VkSurfaceFormatKHR> &availableFormats) {
 	for (const auto &availableFormat : availableFormats) {
 		std::cout << availableFormat.colorSpace << std::endl;
-		if (availableFormat.format == VK_FORMAT_R16G16B16A16_SFLOAT &&
+		if (availableFormat.format == VK_FORMAT_A2B10G10R10_UNORM_PACK32 &&
+			availableFormat.colorSpace == VK_COLOR_SPACE_HDR10_ST2084_EXT)
+			return availableFormat;
+		if (availableFormat.format == VK_FORMAT_R8G8B8A8_SRGB &&
 			availableFormat.colorSpace == VK_COLOR_SPACE_SRGB_NONLINEAR_KHR)
 			return availableFormat;
 	}

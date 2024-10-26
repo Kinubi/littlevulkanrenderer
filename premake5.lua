@@ -7,7 +7,7 @@ workspace "LVR"
 project "LVR"
 	kind "ConsoleApp"
 	language "C++"
-	cppdialect "C++20"
+	cppdialect "C++latest"
 	staticruntime "Off"
 
 	
@@ -25,8 +25,8 @@ project "LVR"
 	}
 
 	includedirs { "src",
-	 			"%{IncludeDir.Includes}",
-				"%{IncludeDir.VulkanSDK}"
+	 			"%{IncludeDir.includes}",
+				--"%{IncludeDir.VulkanSDK}"
 			}
 
 	defines {
@@ -77,25 +77,13 @@ project "LVR"
 		defines { "HZ_PLATFORM_LINUX", "__EMULATE_UUID", "BACKWARD_HAS_DW", "BACKWARD_HAS_LIBUNWIND" }
 		links { "dw", "dl", "unwind", "pthread", "vulkan","glfw", "wayland-client" }
 		buildoptions { "-march=x86-64-v3" }
-
-		outputdir = "%{cfg.buildcfg}-%{cfg.system}-%{cfg.architecture}"
-
-		targetdir ("bin/" .. outputdir .. "/%{prj.name}")
-		objdir ("bin-int/" .. outputdir .. "/%{prj.name}")
-
-	-- filter "files:shaders/*.vert"
-	-- 	buildcommands '"glslc" "%{file.relpath}" -o "%{file.relpath}.spv"'
-	-- 	buildoutputs "%{file.relpath}.spv"
 	
-	-- filter "files:shaders/*.frag"
-	-- 	buildcommands '"glslc" "%{file.relpath}" -o "%{file.relpath}.spv"'
-	-- 	buildoutputs "%{file.relpath}.spv"
-	
-	-- filter "files:shaders/*.comp"
-	-- 	buildcommands '"glslc" "%{file.relpath}" -o "%{file.relpath}.spv"'
-	-- 	buildoutputs "%{file.relpath}.spv"
+	outputdir = "%{cfg.buildcfg}-%{cfg.system}-%{cfg.architecture}"
 
-	
+	targetdir ("bin/" .. outputdir .. "/%{prj.name}")
+	objdir ("bin-int/" .. outputdir .. "/%{prj.name}")
+
+
 
 
 

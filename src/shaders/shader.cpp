@@ -5,10 +5,10 @@
 
 #include <cassert>
 #include <cstdint>
-#include <filesystem>
 #include <fstream>
 #include <glm/gtc/type_ptr.hpp>
 #include <iostream>
+#include <iterator>
 #include <memory>
 #include <shaderc/shaderc.hpp>
 #include <spirv_cross/spirv_cross.hpp>
@@ -66,25 +66,12 @@ static void CreateCacheDirectoryIfNeeded() {
 
 Shader::Shader(const std::string& filePath) {
 	Utils::CreateCacheDirectoryIfNeeded();
-	std::vector<Source> sources{};
-	std::string source = ReadFile(filePath);
+	source.filePath = filePath;
 
 	std::filesystem::path filepath = std::filesystem::path(filePath);
-	sources.push_back(PreProcess(source, filepath.extension()));
+	PreProcess(source);
 
-	CompileOrGetVulkanBinaries(sources, std::vector<std::string>{filePath});
-}
-
-Shader::Shader(const std::vector<std::string> filePaths) {
-	std::vector<Source> sources{};
-	Utils::CreateCacheDirectoryIfNeeded();
-	for (std::string filePath : filePaths) {
-		std::string source = ReadFile(filePath);
-
-		std::filesystem::path filepath = std::filesystem::path(filePath);
-		sources.push_back(PreProcess(source, filepath.extension()));
-	}
-	CompileOrGetVulkanBinaries(sources, filePaths);
+	CompileOrGetVulkanBinaries(source);
 }
 
 Shader::~Shader() {}
@@ -111,18 +98,15 @@ std::string Shader::ReadFile(const std::string& filepath) {
 	return result;
 }
 
-Source Shader::PreProcess(const std::string& source, const std::string& extension) {
-	Source shaderSource{};
-
-	assert(Utils::ShaderTypeFromString(extension) && "Invalid shader type specified");
-	shaderSource.shaderBitFlags = Utils::ShaderTypeFromString(extension);
-	shaderSource.source = source;
-
-	return shaderSource;
+void Shader::PreProcess(Source& source) {
+	assert(
+		Utils::ShaderTypeFromString(source.filePath.extension()) &&
+		"Invalid shader type specified");
+	source.shaderBitFlags = Utils::ShaderTypeFromString(source.filePath.extension());
+	source.sourceString = ReadFile(source.filePath);
 }
 
-void Shader::CompileOrGetVulkanBinaries(
-	std::vector<Source>& shaderSources, const std::vector<std::string> filePaths) {
+void Shader::CompileOrGetVulkanBinaries(Source& shaderSource) {
 	shaderc::Compiler compiler;
 	shaderc::CompileOptions options;
 	options.SetTargetEnvironment(shaderc_target_env_vulkan, shaderc_env_version_vulkan_1_3);
@@ -131,52 +115,49 @@ void Shader::CompileOrGetVulkanBinaries(
 
 	std::filesystem::path cacheDirectory = Utils::GetCacheDirectory();
 
-	auto& shaderData = m_VulkanSPIRV;
+	auto& shaderData = source.m_VulkanSPIRV;
 	shaderData.clear();
-	int32_t i = 0;
-	for (auto&& [stage, source] : shaderSources) {
-		std::filesystem::path shaderFilePath = filePaths[i];
-		std::filesystem::path cachedPath =
-			cacheDirectory / (shaderFilePath.filename().string() + ".spv");
 
-		std::ifstream in(cachedPath, std::ios::in | std::ios::binary);
-		if (in.is_open()) {
-			in.seekg(0, std::ios::end);
-			auto size = in.tellg();
-			in.seekg(0, std::ios::beg);
+	std::filesystem::path shaderFilePath = source.filePath;
+	std::filesystem::path cachedPath =
+		cacheDirectory / (shaderFilePath.filename().string() + ".spv");
 
-			auto& data = shaderData[stage];
-			data.resize(size / sizeof(uint32_t));
-			in.read((char*)data.data(), size);
-		} else {
-			shaderc::SpvCompilationResult module = compiler.CompileGlslToSpv(
-				source,
-				Utils::ShaderStageToShaderC(stage),
-				filePaths[i].c_str(),
-				options);
-			if (module.GetCompilationStatus() != shaderc_compilation_status_success) {
-				throw std::runtime_error(module.GetErrorMessage());
-				assert_perror(false);
-			}
+	std::ifstream in{cachedPath, std::ios::ate | std::ios::binary};
+	if (in.is_open()) {
+		size_t size = static_cast<size_t>(in.tellg());
 
-			shaderData[stage] = std::vector<uint32_t>(module.cbegin(), module.cend());
-
-			std::ofstream out(cachedPath, std::ios::out | std::ios::binary);
-			if (out.is_open()) {
-				auto& data = shaderData[stage];
-				out.write((char*)data.data(), data.size() * sizeof(uint32_t));
-				out.flush();
-				out.close();
-			}
+		in.seekg(0);
+		auto& data = source.m_VulkanSPIRV;
+		data.resize(size / sizeof(uint32_t));
+		in.read((char*)data.data(), size);
+		in.close();
+	} else {
+		shaderc::SpvCompilationResult module = compiler.CompileGlslToSpv(
+			source.sourceString,
+			Utils::ShaderStageToShaderC(source.shaderBitFlags),
+			source.filePath.c_str(),
+			options);
+		if (module.GetCompilationStatus() != shaderc_compilation_status_success) {
+			throw std::runtime_error(module.GetErrorMessage());
+			assert_perror(false);
 		}
-		i++;
+
+		source.m_VulkanSPIRV = std::vector<uint32_t>(module.cbegin(), module.cend());
+
+		std::ofstream out(cachedPath, std::ios::out | std::ios::binary);
+		if (out.is_open()) {
+			auto& data = source.m_VulkanSPIRV;
+			out.write((char*)data.data(), data.size() * sizeof(uint32_t));
+			out.flush();
+			out.close();
+		}
 	}
 
-	for (auto&& [stage, data] : shaderData) Reflect(stage, data);
+	Reflect(source);
 }
 
-void Shader::Reflect(VkShaderStageFlagBits stage, const std::vector<uint32_t>& shaderData) {
-	spirv_cross::Compiler compiler(shaderData);
+void Shader::Reflect(Source& source) {
+	spirv_cross::Compiler compiler(source.m_VulkanSPIRV);
 	spirv_cross::ShaderResources resources = compiler.get_shader_resources();
 
 	for (const auto& resource : resources.uniform_buffers) {
@@ -187,61 +168,40 @@ void Shader::Reflect(VkShaderStageFlagBits stage, const std::vector<uint32_t>& s
 	}
 }
 
-void Shader::Create(Device& device, const std::string& filepath, ShaderInfo& shaderStage) {
-	Shader shaders = Shader(filepath);
-	int32_t i = 0;
-	auto shader = shaders.m_VulkanSPIRV.begin();
+std::unique_ptr<Shader> Shader::Create(Device& device, const std::string& filepath) {
+	std::unique_ptr<Shader> shader = std::make_unique<Shader>(Shader(filepath));
 
-	shaderStage.createInfo.sType = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO;
-	shaderStage.createInfo.codeSize = 4 * shader->second.size();
-	shaderStage.createInfo.pCode = reinterpret_cast<const uint32_t*>(shader->second.data());
+	shader->shaderInfo.createInfo.sType = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO;
+	shader->shaderInfo.createInfo.codeSize = 4 * shader->source.m_VulkanSPIRV.size();
+	shader->shaderInfo.createInfo.pCode =
+		reinterpret_cast<const uint32_t*>(shader->source.m_VulkanSPIRV.data());
 
 	if (vkCreateShaderModule(
 			device.device(),
-			&shaderStage.createInfo,
+			&shader->shaderInfo.createInfo,
 			nullptr,
-			&shaderStage.shaderModule) != VK_SUCCESS) {
+			&shader->shaderInfo.shaderModule) != VK_SUCCESS) {
 		throw std::runtime_error("Failed to create shader");
 	}
 
-	shaderStage.shaderCreateInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
-	shaderStage.shaderCreateInfo.stage = shader->first;
-	shaderStage.shaderCreateInfo.module = shaderStage.shaderModule;
-	shaderStage.shaderCreateInfo.pName = "main";
-	shaderStage.shaderCreateInfo.flags = 0;
-	shaderStage.shaderCreateInfo.pNext = nullptr;
-	i++;
+	shader->shaderInfo.shaderCreateInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
+	shader->shaderInfo.shaderCreateInfo.stage = shader->source.shaderBitFlags;
+	shader->shaderInfo.shaderCreateInfo.module = shader->shaderInfo.shaderModule;
+	shader->shaderInfo.shaderCreateInfo.pName = "main";
+	shader->shaderInfo.shaderCreateInfo.flags = 0;
+	shader->shaderInfo.shaderCreateInfo.pNext = nullptr;
+
+	return shader;
 }
 
-void Shader::Create(
-	Device& device,
-	const std::vector<std::string> filePaths,
-	std::vector<ShaderInfo>& shaderStages) {
-	Shader shaders = Shader(filePaths);
+std::vector<std::unique_ptr<Shader>> Shader::Create(
+	Device& device, const std::vector<std::string> filePaths) {
+	std::vector<std::unique_ptr<Shader>> shaders;
 	int32_t i = 0;
-	for (auto shader : shaders.m_VulkanSPIRV) {
-		shaderStages[i].createInfo.codeSize = 4 * shader.second.size();
-		shaderStages[i].createInfo.sType = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO;
-		shaderStages[i].createInfo.pCode = reinterpret_cast<const uint32_t*>(shader.second.data());
-
-		if (vkCreateShaderModule(
-				device.device(),
-				&shaderStages[i].createInfo,
-				nullptr,
-				&shaderStages[i].shaderModule) != VK_SUCCESS) {
-			throw std::runtime_error("Failed to create shader");
-		}
-
-		shaderStages[i].shaderCreateInfo.sType =
-			VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
-		shaderStages[i].shaderCreateInfo.stage = shader.first;
-		shaderStages[i].shaderCreateInfo.module = shaderStages[i].shaderModule;
-		shaderStages[i].shaderCreateInfo.pName = "main";
-		shaderStages[i].shaderCreateInfo.flags = 0;
-		shaderStages[i].shaderCreateInfo.pNext = nullptr;
-
-		i++;
+	for (auto filePath : filePaths) {
+		shaders.push_back(Create(device, filePath));
 	}
+	return shaders;
 }
 
 }  // namespace lvr

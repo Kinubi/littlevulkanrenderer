@@ -3,6 +3,8 @@
 #include <vulkan/vulkan_core.h>
 
 #include <cstddef>
+#include <cstdint>
+#include <filesystem>
 #include <glm/glm.hpp>
 #include <memory>
 #include <string>
@@ -15,38 +17,42 @@ namespace lvr {
 
 struct ShaderInfo {
 	ShaderInfo() = default;
-	VkShaderModule shaderModule{};
+	VkShaderModule shaderModule;
 	VkShaderModuleCreateInfo createInfo{};
 	VkPipelineShaderStageCreateInfo shaderCreateInfo{};
 };
 
 struct Source {
 	VkShaderStageFlagBits shaderBitFlags;
-	std::string source{};
+	std::string sourceString{};
+	std::filesystem::path filePath;
+	std::vector<uint32_t> m_VulkanSPIRV;
 };
 
 class Shader {
    public:
 	Shader(const std::string& filePath);
-	Shader(const std::vector<std::string> filePaths);
+
 	~Shader();
 
-	static void Create(
-		Device& device,
-		const std::vector<std::string> filePaths,
-		std::vector<ShaderInfo>& shaderStages);
-	static void Create(Device& device, const std::string& filePath, ShaderInfo& shaderStage);
+	static std::vector<std::unique_ptr<Shader>> Create(
+		Device& device, const std::vector<std::string> filePaths);
+	static std::unique_ptr<Shader> Create(Device& device, const std::string& filePath);
+
+	const Source getSource() const { return source; }
+	const ShaderInfo getShaderInfo() const { return shaderInfo; }
 
    private:
 	std::string ReadFile(const std::string& filePath);
-	Source PreProcess(const std::string& source, const std::string& extension);
+	void PreProcess(Source& source);
 
-	void CompileOrGetVulkanBinaries(
-		std::vector<Source>& shaderSources, const std::vector<std::string> filePaths);
-	void Reflect(VkShaderStageFlagBits stage, const std::vector<uint32_t>& shaderData);
+	void CompileOrGetVulkanBinaries(Source& source);
+	void Reflect(Source& source);
 
    private:
-	std::unordered_map<VkShaderStageFlagBits, std::vector<uint32_t>> m_VulkanSPIRV{};
+	Source source{};
+
+	ShaderInfo shaderInfo{};
 };
 
 }  // namespace lvr

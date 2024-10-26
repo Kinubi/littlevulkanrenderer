@@ -4,10 +4,13 @@
 
 #include <cassert>
 #include <cstddef>
+#include <cstdint>
+#include <cstring>
 #include <fstream>
 #include <iostream>
 #include <memory>
 #include <stdexcept>
+#include <vector>
 
 #include "model.h"
 #include "shaders/shader.h"
@@ -21,9 +24,9 @@ Pipeline::Pipeline(
 }
 
 Pipeline::~Pipeline() {
-	for (auto &shaderStage : shaderStages) {
-		vkDestroyShaderModule(device.device(), shaderStage.shaderModule, nullptr);
-		vkDestroyShaderModule(device.device(), shaderStage.shaderModule, nullptr);
+	for (auto &shader : shaders) {
+		vkDestroyShaderModule(device.device(), shader->getShaderInfo().shaderModule, nullptr);
+		vkDestroyShaderModule(device.device(), shader->getShaderInfo().shaderModule, nullptr);
 	}
 	vkDestroyPipeline(device.device(), graphicsPipeline, nullptr);
 }
@@ -40,15 +43,15 @@ void Pipeline::createGraphicsPipeline(
 		"Cannot create graphics pipeline: no renderpass provided in "
 		"configInfo");
 
-	shaderStages.resize(filePaths.size());
+	shaders.resize(filePaths.size());
 
 	// Shader::Create(device, filePaths[0], shaderStages[0]);
 	// Shader::Create(device, filePaths[1], shaderStages[1]);
 
-	Shader::Create(device, filePaths, shaderStages);
+	shaders = Shader::Create(device, filePaths);
 
-	for (int i; i < shaderStages.size(); i++) {
-		shaderInfo[i] = shaderStages[i].shaderCreateInfo;
+	for (int32_t i; i < shaders.size(); i++) {
+		createInfos[i] = shaders[i]->getShaderInfo().shaderCreateInfo;
 	}
 
 	auto &bindingDescriptions = configInfo.bindingDescriptions;
@@ -61,11 +64,10 @@ void Pipeline::createGraphicsPipeline(
 		static_cast<uint32_t>(bindingDescriptions.size());
 	vertexInputInfo.pVertexAttributeDescriptions = attributeDescriptions.data();
 	vertexInputInfo.pVertexBindingDescriptions = bindingDescriptions.data();
-
 	VkGraphicsPipelineCreateInfo pipelineInfo{};
 	pipelineInfo.sType = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO;
-	pipelineInfo.stageCount = shaderStages.size();
-	pipelineInfo.pStages = shaderInfo;
+	pipelineInfo.stageCount = shaders.size();
+	pipelineInfo.pStages = createInfos;
 	pipelineInfo.pVertexInputState = &vertexInputInfo;
 	pipelineInfo.pInputAssemblyState = &configInfo.inputAssemblyInfo;
 	pipelineInfo.pViewportState = &configInfo.viewportInfo;

@@ -152,6 +152,16 @@ void Application::loadGameObjects() {
 
 	gameObjects.emplace(flatObject.getId(), std::move(flatObject));
 
+	std::shared_ptr<Model> cubeModel =
+		Model::createModelFromFile(lvrDevice, "models/colored_cube.obj");
+
+	auto cubeObject = GameObject::createGameObject();
+	cubeObject.model = cubeModel;
+	cubeObject.tranform.translation = {0.0f, 1.0f, 0.0f};
+	cubeObject.tranform.scale = {0.5f, 0.5f, 0.5f};
+
+	gameObjects.emplace(cubeObject.getId(), std::move(cubeObject));
+
 	std::shared_ptr<Model> quadModel = Model::createModelFromFile(lvrDevice, "models/quad.obj");
 
 	auto quadObject = GameObject::createGameObject();

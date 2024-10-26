@@ -57,7 +57,7 @@ class Pipeline {
 	Device &device;
 	VkPipeline graphicsPipeline;
 
-	std::vector<ShaderInfo> shaderStages;
-	VkPipelineShaderStageCreateInfo shaderInfo[];
+	std::vector<std::unique_ptr<Shader>> shaders{};
+	VkPipelineShaderStageCreateInfo createInfos[];
 };
 }  // namespace lvr
