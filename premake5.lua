@@ -1,3 +1,5 @@
+include "dependencies.lua"
+
 workspace "LVR"
 	configurations { "Debug",  "Release"}
     conformancemode "On"
@@ -5,7 +7,7 @@ workspace "LVR"
 project "LVR"
 	kind "ConsoleApp"
 	language "C++"
-	cppdialect "C++20"
+	cppdialect "C++latest"
 	staticruntime "Off"
 
 	
@@ -20,12 +22,12 @@ project "LVR"
 		"src/**.c",
 		"src/**.hpp",
 		"src/**.cpp",
-		"shaders/*.vert",
-		"shaders/*.frag",
-		"shaders/*.comp"
 	}
 
-	includedirs { "src/", "include/"}
+	includedirs { "src",
+	 			"%{IncludeDir.includes}",
+				--"%{IncludeDir.VulkanSDK}"
+			}
 
 	defines {
 		"GLM_FORCE_RADIANS",
@@ -44,11 +46,28 @@ project "LVR"
 		optimize "Off"
 		symbols "On"
 
+
+		links
+		{
+			"%{Library.ShaderC}",
+			"%{Library.SPIRV_Cross}",
+			"%{Library.SPIRV_Cross_GLSL}"
+		}
+
+
+
 	filter "configurations:Release"
 		optimize "Full"
 		symbols "Off"
 		vectorextensions "AVX2"
 		isaextensions { "BMI", "POPCNT", "LZCNT", "F16C" }
+
+		links
+		{
+			"%{Library.ShaderC}",
+			"%{Library.SPIRV_Cross}",
+			"%{Library.SPIRV_Cross_GLSL}"
+		}
 
 
 	filter "system:windows"
@@ -58,25 +77,13 @@ project "LVR"
 		defines { "HZ_PLATFORM_LINUX", "__EMULATE_UUID", "BACKWARD_HAS_DW", "BACKWARD_HAS_LIBUNWIND" }
 		links { "dw", "dl", "unwind", "pthread", "vulkan","glfw", "wayland-client" }
 		buildoptions { "-march=x86-64-v3" }
-
-		outputdir = "%{cfg.buildcfg}-%{cfg.system}-%{cfg.architecture}"
-
-		targetdir ("bin/" .. outputdir .. "/%{prj.name}")
-		objdir ("bin-int/" .. outputdir .. "/%{prj.name}")
-
-	filter "files:shaders/*.vert"
-		buildcommands '"glslc" "%{file.relpath}" -o "%{file.relpath}.spv"'
-		buildoutputs "%{file.relpath}.spv"
 	
-	filter "files:shaders/*.frag"
-		buildcommands '"glslc" "%{file.relpath}" -o "%{file.relpath}.spv"'
-		buildoutputs "%{file.relpath}.spv"
-	
-	filter "files:shaders/*.comp"
-		buildcommands '"glslc" "%{file.relpath}" -o "%{file.relpath}.spv"'
-		buildoutputs "%{file.relpath}.spv"
+	outputdir = "%{cfg.buildcfg}-%{cfg.system}-%{cfg.architecture}"
 
-	
+	targetdir ("bin/" .. outputdir .. "/%{prj.name}")
+	objdir ("bin-int/" .. outputdir .. "/%{prj.name}")
+
+
 
 
 

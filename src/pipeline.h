@@ -2,10 +2,12 @@
 
 #include <vulkan/vulkan_core.h>
 
+#include <memory>
 #include <string>
 #include <vector>
 
 #include "device.h"
+#include "shaders/shader.h"
 
 namespace lvr {
 
@@ -33,8 +35,7 @@ class Pipeline {
    public:
 	Pipeline(
 		Device &device,
-		const std::string &vertFilepath,
-		const std::string &fragFilepath,
+		const std::vector<std::string> filePaths,
 		const PipelineConfigInfo &configInfo);
 
 	~Pipeline();
@@ -45,21 +46,18 @@ class Pipeline {
 	void bind(VkCommandBuffer commandBuffer);
 
 	static void defaultPipelineConfigInfo(PipelineConfigInfo &configInfo);
-	static void enableAlphaBlending(PipelineConfigInfo& configInfo);
+	static void enableAlphaBlending(PipelineConfigInfo &configInfo);
 
    private:
-	static std::vector<char> readFile(const std::string &filetpath);
-
 	void createGraphicsPipeline(
-		const std::string &vertFilepath,
-		const std::string &fragFilepath,
-		const PipelineConfigInfo &configInfo);
+		const std::vector<std::string> filePaths, const PipelineConfigInfo &configInfo);
 
-	void createShaderModule(const std::vector<char> &code, VkShaderModule *shaderModule);
+	void createShaders(const std::string &fragFilepath, const std::string &vertFilepath);
 
 	Device &device;
 	VkPipeline graphicsPipeline;
-	VkShaderModule vertShaderModule;
-	VkShaderModule fragShaderModule;
+
+	std::vector<std::unique_ptr<Shader>> shaders{};
+	VkPipelineShaderStageCreateInfo createInfos[];
 };
 }  // namespace lvr

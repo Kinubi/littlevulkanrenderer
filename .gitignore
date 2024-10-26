@@ -3,3 +3,4 @@
 *.spv
 LVR
 .vscode/launch.json
+*.make
