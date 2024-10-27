@@ -3,6 +3,7 @@
 layout (location=0) in vec4 fragColor;
 layout (location=1) in vec3 fragPosWorld;
 layout (location=2) in vec3 fragNormalWorld;
+layout(location = 3) out vec2 fragUv;
 
 layout(location = 0) out vec4 outColor;
 
@@ -50,6 +51,7 @@ void main() {
 		blinnTerm = pow(blinnTerm, 32.0);
 		specularLight += intensity * blinnTerm;
 	}
+	vec3 color = texture(diffuseMap, fragUv).xyz;
 
-  	outColor = vec4(diffuseLight, 1.0) * fragColor + vec4(specularLight, 1.0) * fragColor;
+  	outColor = vec4(diffuseLight, 1.0) * color + vec4(specularLight, 1.0) * fragColor;
 }

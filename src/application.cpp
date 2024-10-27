@@ -31,178 +31,189 @@
 
 namespace lvr {
 
-Application::Application() {
-	globalPool =
-		DescriptorPool::Builder(lvrDevice)
+	Application::Application() {
+		globalPool =
+			DescriptorPool::Builder(lvrDevice)
 			.setMaxSets(SwapChain::MAX_FRAMES_IN_FLIGHT)
 			.addPoolSize(VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, SwapChain::MAX_FRAMES_IN_FLIGHT)
 			.build();
-	loadGameObjects();
-}
-
-Application::~Application() {}
-
-void Application::OnStart() {
-	for (int32_t i = 0; i < uboBuffers.size(); i++) {
-		uboBuffers[i] = std::make_unique<Buffer>(
-			lvrDevice,
-			sizeof(GlobalUbo),
-			1,
-			VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT,
-			VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
-			lvrDevice.properties.limits.minUniformBufferOffsetAlignment);
-
-		uboBuffers[i]->map();
+		loadGameObjects();
 	}
 
-	auto globalSetLayout =
-		DescriptorSetLayout::Builder(lvrDevice)
+	Application::~Application() {}
+
+	void Application::OnStart() {
+		for (int32_t i = 0; i < uboBuffers.size(); i++) {
+			uboBuffers[i] = std::make_unique<Buffer>(
+				lvrDevice,
+				sizeof(GlobalUbo),
+				1,
+				VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT,
+				VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
+				lvrDevice.properties.limits.minUniformBufferOffsetAlignment);
+
+			uboBuffers[i]->map();
+		}
+
+		// build frame descriptor pools
+		framePools.resize(SwapChain::MAX_FRAMES_IN_FLIGHT);
+		auto framePoolBuilder = DescriptorPool::Builder(lveDevice)
+			.setMaxSets(1000)
+			.addPoolSize(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 1000)
+			.addPoolSize(VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 1000)
+			.setPoolFlags(VK_DESCRIPTOR_POOL_CREATE_FREE_DESCRIPTOR_SET_BIT);
+		for (int i = 0; i < framePools.size(); i++) {
+			framePools[i] = framePoolBuilder.build();
+		}
+
+		auto globalSetLayout =
+			DescriptorSetLayout::Builder(lvrDevice)
 			.addBinding(0, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, VK_SHADER_STAGE_ALL_GRAPHICS)
 			.build();
 
-	for (int32_t i = 0; i < globalDescriptorSets.size(); i++) {
-		auto bufferInfo = uboBuffers[i]->descriptorInfo();
-		DescriptorWriter(*globalSetLayout, *globalPool)
-			.writeBuffer(0, &bufferInfo)
-			.build(globalDescriptorSets[i]);
-	}
-	simpleRenderSystem = std::make_unique<SimpleRenderSystem>(
-		lvrDevice,
-		lvrRenderer.getSwapChainRenderPass(),
-		globalSetLayout->getDescriptorSetLayout());
+		for (int32_t i = 0; i < globalDescriptorSets.size(); i++) {
+			auto bufferInfo = uboBuffers[i]->descriptorInfo();
+			DescriptorWriter(*globalSetLayout, *globalPool)
+				.writeBuffer(0, &bufferInfo)
+				.build(globalDescriptorSets[i]);
+		}
+		simpleRenderSystem = std::make_unique<SimpleRenderSystem>(
+			lvrDevice,
+			lvrRenderer.getSwapChainRenderPass(),
+			globalSetLayout->getDescriptorSetLayout());
 
-	pointLightSystem = std::make_unique<PointLightSystem>(
-		lvrDevice,
-		lvrRenderer.getSwapChainRenderPass(),
-		globalSetLayout->getDescriptorSetLayout());
+		pointLightSystem = std::make_unique<PointLightSystem>(
+			lvrDevice,
+			lvrRenderer.getSwapChainRenderPass(),
+			globalSetLayout->getDescriptorSetLayout());
 
-	viewerObject.tranform.translation.z = -2.5f;
+		viewerObject.tranform.translation.z = -2.5f;
 
-	auto currentTime = std::chrono::high_resolution_clock::now();
-	while (!lvrWIndow.shouldClose()) {
-		auto newTime = std::chrono::high_resolution_clock::now();
-		float frameTime =
-			std::chrono::duration<float, std::chrono::seconds::period>(newTime - currentTime)
+		auto currentTime = std::chrono::high_resolution_clock::now();
+		while (!lvrWIndow.shouldClose()) {
+			auto newTime = std::chrono::high_resolution_clock::now();
+			float frameTime =
+				std::chrono::duration<float, std::chrono::seconds::period>(newTime - currentTime)
 				.count();
-		currentTime = newTime;
-		OnUpdate(frameTime);
+			currentTime = newTime;
+			OnUpdate(frameTime);
+		}
+
+		vkDeviceWaitIdle(lvrDevice.device());
 	}
 
-	vkDeviceWaitIdle(lvrDevice.device());
-}
+	void Application::OnUpdate(float dt) {
+		glfwPollEvents();
 
-void Application::OnUpdate(float dt) {
-	glfwPollEvents();
+		cameraController.moveInPlaneXZ(lvrWIndow.getGLFWWindow(), dt, viewerObject);
+		camera.setViewYXZ(viewerObject.tranform.translation, viewerObject.tranform.rotation);
 
-	cameraController.moveInPlaneXZ(lvrWIndow.getGLFWWindow(), dt, viewerObject);
-	camera.setViewYXZ(viewerObject.tranform.translation, viewerObject.tranform.rotation);
+		float aspect = lvrRenderer.getAspectRatio();
 
-	float aspect = lvrRenderer.getAspectRatio();
+		camera.setPerspectiveProjection(glm::radians(50.0f), aspect, 0.1f, 10.0f);
 
-	camera.setPerspectiveProjection(glm::radians(50.0f), aspect, 0.1f, 10.0f);
+		if (auto commandBuffer = lvrRenderer.beginFrame()) {
+			int32_t frameIndex = lvrRenderer.getFrameIndex();
 
-	if (auto commandBuffer = lvrRenderer.beginFrame()) {
-		int32_t frameIndex = lvrRenderer.getFrameIndex();
+			FrameInfo frameInfo{
+				frameIndex,
+				dt,
+				commandBuffer,
+				camera,
+				globalDescriptorSets[frameIndex],
+				gameObjects };
 
-		FrameInfo frameInfo{
-			frameIndex,
-			dt,
-			commandBuffer,
-			camera,
-			globalDescriptorSets[frameIndex],
-			gameObjects};
+			// update
 
-		// update
+			GlobalUbo ubo{};
+			ubo.projectionMatrix = camera.getProjection();
+			ubo.viewMatrix = camera.getView();
+			ubo.inverseViewMatrix = camera.getInverseView();
+			pointLightSystem->update(frameInfo, ubo);
 
-		GlobalUbo ubo{};
-		ubo.projectionMatrix = camera.getProjection();
-		ubo.viewMatrix = camera.getView();
-		ubo.inverseViewMatrix = camera.getInverseView();
-		pointLightSystem->update(frameInfo, ubo);
+			uboBuffers[frameIndex]->writeToBuffer(&ubo);
+			uboBuffers[frameIndex]->flush();
 
-		uboBuffers[frameIndex]->writeToBuffer(&ubo);
-		uboBuffers[frameIndex]->flush();
-
-		lvrRenderer.beginSwapChainRenderPass(commandBuffer);
-		simpleRenderSystem->renderGameObjects(frameInfo);
-		pointLightSystem->render(frameInfo);
-		lvrRenderer.endSwapChainRenderPass(commandBuffer);
-		lvrRenderer.endFrame();
+			lvrRenderer.beginSwapChainRenderPass(commandBuffer);
+			simpleRenderSystem->renderGameObjects(frameInfo);
+			pointLightSystem->render(frameInfo);
+			lvrRenderer.endSwapChainRenderPass(commandBuffer);
+			lvrRenderer.endFrame();
+		}
 	}
-}
 
-void Application::loadGameObjects() {
-	std::shared_ptr<Model> smoothModel =
-		Model::createModelFromFile(lvrDevice, "models/smooth_vase.obj");
+	void Application::loadGameObjects() {
+		std::shared_ptr<Model> smoothModel =
+			Model::createModelFromFile(lvrDevice, "models/smooth_vase.obj");
 
-	auto smoothObject = GameObject::createGameObject();
-	smoothObject.model = smoothModel;
-	smoothObject.tranform.translation = {-0.5f, 0.5f, 0.0f};
-	smoothObject.tranform.scale = {0.5f, 0.5f, 0.5f};
+		auto smoothObject = GameObject::createGameObject();
+		smoothObject.model = smoothModel;
+		smoothObject.tranform.translation = { -0.5f, 0.5f, 0.0f };
+		smoothObject.tranform.scale = { 0.5f, 0.5f, 0.5f };
 
-	gameObjects.emplace(smoothObject.getId(), std::move(smoothObject));
+		gameObjects.emplace(smoothObject.getId(), std::move(smoothObject));
 
-	std::shared_ptr<Model> flatModel =
-		Model::createModelFromFile(lvrDevice, "models/flat_vase.obj");
+		std::shared_ptr<Model> flatModel =
+			Model::createModelFromFile(lvrDevice, "models/flat_vase.obj");
 
-	auto flatObject = GameObject::createGameObject();
-	flatObject.model = flatModel;
-	flatObject.tranform.translation = {0.5f, 0.5f, 0.0f};
-	flatObject.tranform.scale = {0.5f, 0.5f, 0.5f};
+		auto flatObject = GameObject::createGameObject();
+		flatObject.model = flatModel;
+		flatObject.tranform.translation = { 0.5f, 0.5f, 0.0f };
+		flatObject.tranform.scale = { 0.5f, 0.5f, 0.5f };
 
-	gameObjects.emplace(flatObject.getId(), std::move(flatObject));
+		gameObjects.emplace(flatObject.getId(), std::move(flatObject));
 
-	std::shared_ptr<Model> cubeModel =
-		Model::createModelFromFile(lvrDevice, "models/colored_cube.obj");
+		std::shared_ptr<Model> cubeModel =
+			Model::createModelFromFile(lvrDevice, "models/colored_cube.obj");
 
-	auto cubeObject = GameObject::createGameObject();
-	cubeObject.model = cubeModel;
-	cubeObject.tranform.translation = {0.0f, 1.0f, 0.0f};
-	cubeObject.tranform.scale = {0.5f, 0.5f, 0.5f};
+		auto cubeObject = GameObject::createGameObject();
+		cubeObject.model = cubeModel;
+		cubeObject.tranform.translation = { 0.0f, 1.0f, 0.0f };
+		cubeObject.tranform.scale = { 0.5f, 0.5f, 0.5f };
 
-	gameObjects.emplace(cubeObject.getId(), std::move(cubeObject));
+		gameObjects.emplace(cubeObject.getId(), std::move(cubeObject));
 
-	std::shared_ptr<Model> quadModel = Model::createModelFromFile(lvrDevice, "models/quad.obj");
+		std::shared_ptr<Model> quadModel = Model::createModelFromFile(lvrDevice, "models/quad.obj");
 
-	auto quadObject = GameObject::createGameObject();
-	quadObject.model = quadModel;
-	quadObject.tranform.translation = {0.0f, 0.5f, 0.0f};
-	quadObject.tranform.scale = {1.5f, 1.5f, 1.5f};
+		auto quadObject = GameObject::createGameObject();
+		quadObject.model = quadModel;
+		quadObject.tranform.translation = { 0.0f, 0.5f, 0.0f };
+		quadObject.tranform.scale = { 1.5f, 1.5f, 1.5f };
 
-	gameObjects.emplace(quadObject.getId(), std::move(quadObject));
+		gameObjects.emplace(quadObject.getId(), std::move(quadObject));
 
-	std::shared_ptr<Model> humanModel =
-		Model::createModelFromFile(lvrDevice, "models/FinalBaseMesh.obj");
+		std::shared_ptr<Model> humanModel =
+			Model::createModelFromFile(lvrDevice, "models/FinalBaseMesh.obj");
 
-	auto humanObject = GameObject::createGameObject();
-	humanObject.model = humanModel;
-	humanObject.tranform.translation = {0.0f, 0.5f, 0.0f};
-	humanObject.tranform.rotation = {0.0f, 0.0f, 0.5 * glm::two_pi<float>()};
-	humanObject.tranform.scale = {0.1f, 0.1f, 0.1};
+		auto humanObject = GameObject::createGameObject();
+		humanObject.model = humanModel;
+		humanObject.tranform.translation = { 0.0f, 0.5f, 0.0f };
+		humanObject.tranform.rotation = { 0.0f, 0.0f, 0.5 * glm::two_pi<float>() };
+		humanObject.tranform.scale = { 0.1f, 0.1f, 0.1 };
 
-	gameObjects.emplace(humanObject.getId(), std::move(humanObject));
+		gameObjects.emplace(humanObject.getId(), std::move(humanObject));
 
-	std::vector<glm::vec3> lightColors{
-		{1.f, .1f, .1f},
-		{.1f, .1f, 1.f},
-		{.1f, 1.f, .1f},
-		{1.f, 1.f, .1f},
-		{.1f, 1.f, 1.f},
-		{1.f, 1.f, 1.f}	 //
-	};
+		std::vector<glm::vec3> lightColors{
+			{1.f, .1f, .1f},
+			{.1f, .1f, 1.f},
+			{.1f, 1.f, .1f},
+			{1.f, 1.f, .1f},
+			{.1f, 1.f, 1.f},
+			{1.f, 1.f, 1.f}	 //
+		};
 
-	for (int32_t i = 0; i < lightColors.size(); i++) {
-		auto pointLight = GameObject::makePointLight(0.2f);
-		pointLight.color = glm::vec4(lightColors[i], 1.0f);
-		auto rotateLight = glm::rotate(
-			glm::mat4(1.0f),
-			(i * glm::two_pi<float>()) / lightColors.size(),
-			{0.0f, -1.0f, 0.0f});
+		for (int32_t i = 0; i < lightColors.size(); i++) {
+			auto pointLight = GameObject::makePointLight(0.2f);
+			pointLight.color = glm::vec4(lightColors[i], 1.0f);
+			auto rotateLight = glm::rotate(
+				glm::mat4(1.0f),
+				(i * glm::two_pi<float>()) / lightColors.size(),
+				{ 0.0f, -1.0f, 0.0f });
 
-		pointLight.tranform.translation =
-			glm::vec3(rotateLight * glm::vec4(-1.0f, -1.0f, -1.0f, 1.0f));
-		gameObjects.emplace(pointLight.getId(), std::move(pointLight));
+			pointLight.tranform.translation =
+				glm::vec3(rotateLight * glm::vec4(-1.0f, -1.0f, -1.0f, 1.0f));
+			gameObjects.emplace(pointLight.getId(), std::move(pointLight));
+		}
 	}
-}
 
 }  // namespace lvr

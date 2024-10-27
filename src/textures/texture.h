@@ -1,6 +1,6 @@
 #pragma once
 
-#include <vulkan/vulkan_core.h>
+
 
 #include <cstdint>
 #include <string>
@@ -17,9 +17,12 @@ namespace lvr {
 	class Texture {
 	public:
 		Texture(Device& device, const std::string& filePath);
-		~Texture() {};
+		~Texture();
 
 		void createTextureImage();
+		void createTextureImageView(VkImageViewType viewType);
+
+		void createTextureSampler();
 
 		void createImage(
 			VkFormat format,
@@ -40,5 +43,8 @@ namespace lvr {
 
 		VkImage textureImage;
 		VkDeviceMemory imageMemory;
+
+		VkImageView textureImageView;
+		VkSampler textureSampler;
 	};
 }  // namespace lvr
