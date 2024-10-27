@@ -3,16 +3,14 @@
 #include <cstdint>
 #define GLFW_INCLUDE_VULKAN
 #include <GLFW/glfw3.h>
-#include <wayland-client.h>
 
 #include <string>
 
-#include "vulkan/vulkan_wayland.h"
+// #include "vulkan/vulkan_wayland.h"
 
 // #include "platform/waylandwindow.h"
 
 namespace lvr {
-
 class Window {
    public:
 	Window(int32_t w, int32_t h, std::string name);

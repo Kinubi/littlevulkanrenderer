@@ -1,6 +1,5 @@
 #include "shader.h"
 
-#include <shaderc/shaderc.h>
 #include <vulkan/vulkan_core.h>
 
 #include <cassert>
@@ -110,6 +109,7 @@ void Shader::CompileOrGetVulkanBinaries(Source& shaderSource) {
 	shaderc::Compiler compiler;
 	shaderc::CompileOptions options;
 	options.SetTargetEnvironment(shaderc_target_env_vulkan, shaderc_env_version_vulkan_1_3);
+
 	const bool optimize = true;
 	if (optimize) options.SetOptimizationLevel(shaderc_optimization_level_performance);
 
@@ -139,7 +139,7 @@ void Shader::CompileOrGetVulkanBinaries(Source& shaderSource) {
 			options);
 		if (module.GetCompilationStatus() != shaderc_compilation_status_success) {
 			throw std::runtime_error(module.GetErrorMessage());
-			assert_perror(false);
+			assert(false);
 		}
 
 		source.m_VulkanSPIRV = std::vector<uint32_t>(module.cbegin(), module.cend());
