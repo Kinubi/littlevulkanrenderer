@@ -1,6 +1,5 @@
 #include "shader.h"
 
-#include <shaderc/shaderc.h>
 #include <vulkan/vulkan_core.h>
 
 #include <cassert>
@@ -64,7 +63,7 @@ static void CreateCacheDirectoryIfNeeded() {
 }
 }  // namespace Utils
 
-Shader::Shader(const std::string& filePath) {
+Shader::Shader(Device& device, const std::string& filePath) : device(device) {
 	Utils::CreateCacheDirectoryIfNeeded();
 	source.filePath = filePath;
 
@@ -74,7 +73,7 @@ Shader::Shader(const std::string& filePath) {
 	CompileOrGetVulkanBinaries(source);
 }
 
-Shader::~Shader() {}
+Shader::~Shader() { vkDestroyShaderModule(device.device(), shaderInfo.shaderModule, nullptr); }
 
 std::string Shader::ReadFile(const std::string& filepath) {
 	std::string result{};
@@ -110,6 +109,7 @@ void Shader::CompileOrGetVulkanBinaries(Source& shaderSource) {
 	shaderc::Compiler compiler;
 	shaderc::CompileOptions options;
 	options.SetTargetEnvironment(shaderc_target_env_vulkan, shaderc_env_version_vulkan_1_3);
+
 	const bool optimize = true;
 	if (optimize) options.SetOptimizationLevel(shaderc_optimization_level_performance);
 
@@ -139,7 +139,7 @@ void Shader::CompileOrGetVulkanBinaries(Source& shaderSource) {
 			options);
 		if (module.GetCompilationStatus() != shaderc_compilation_status_success) {
 			throw std::runtime_error(module.GetErrorMessage());
-			assert_perror(false);
+			assert(false);
 		}
 
 		source.m_VulkanSPIRV = std::vector<uint32_t>(module.cbegin(), module.cend());
@@ -169,7 +169,7 @@ void Shader::Reflect(Source& source) {
 }
 
 std::unique_ptr<Shader> Shader::Create(Device& device, const std::string& filepath) {
-	std::unique_ptr<Shader> shader = std::make_unique<Shader>(Shader(filepath));
+	std::unique_ptr<Shader> shader = std::make_unique<Shader>(Shader(device, filepath));
 
 	shader->shaderInfo.createInfo.sType = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO;
 	shader->shaderInfo.createInfo.codeSize = 4 * shader->source.m_VulkanSPIRV.size();
@@ -189,7 +189,7 @@ std::unique_ptr<Shader> Shader::Create(Device& device, const std::string& filepa
 	shader->shaderInfo.shaderCreateInfo.module = shader->shaderInfo.shaderModule;
 	shader->shaderInfo.shaderCreateInfo.pName = "main";
 	shader->shaderInfo.shaderCreateInfo.flags = 0;
-	shader->shaderInfo.shaderCreateInfo.pNext = nullptr;
+	shader->shaderInfo.shaderCreateInfo.pNext = VK_NULL_HANDLE;
 
 	return shader;
 }
@@ -201,6 +201,7 @@ std::vector<std::unique_ptr<Shader>> Shader::Create(
 	for (auto filePath : filePaths) {
 		shaders.push_back(Create(device, filePath));
 	}
+	// std::cout << shaders[1]->shaderInfo.shaderCreateInfo.pNext << std::endl;
 	return shaders;
 }
 

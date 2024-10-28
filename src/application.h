@@ -30,8 +30,8 @@ class Application {
 	Application();
 	~Application();
 
-	Application(const Application &) = delete;
-	Application &operator=(const Application &) = delete;
+	Application(const Application&) = delete;
+	Application& operator=(const Application&) = delete;
 
 	void OnStart();
 	void OnUpdate(float dt);
@@ -42,15 +42,16 @@ class Application {
 	Window lvrWIndow{WIDTH, HEIGHT, "LVR"};
 	Device lvrDevice{lvrWIndow};
 	Renderer lvrRenderer{lvrWIndow, lvrDevice};
-
 	std::unique_ptr<SimpleRenderSystem> simpleRenderSystem;
 	std::unique_ptr<PointLightSystem> pointLightSystem;
 
 	std::unique_ptr<DescriptorPool> globalPool{};
-	GameObject::Map gameObjects;
+	std::vector<std::unique_ptr<DescriptorPool>> framePools;
+	GameObjectManager gameObjectManager{lvrDevice};
 	Camera camera{};
 
-	GameObject viewerObject = GameObject::createGameObject();
+	GameObject& viewerObject = gameObjectManager.createGameObject();
+
 	KeyboardMovementController cameraController{};
 
 	std::vector<std::unique_ptr<Buffer>> uboBuffers =

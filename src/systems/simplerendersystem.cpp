@@ -19,7 +19,7 @@ struct SimplePushConstantData {
 };
 
 SimpleRenderSystem::SimpleRenderSystem(
-	Device &device, VkRenderPass renderPass, VkDescriptorSetLayout globalSetLayout)
+	Device& device, VkRenderPass renderPass, VkDescriptorSetLayout globalSetLayout)
 	: lvrDevice(device) {
 	createPipelineLayout(globalSetLayout);
 	createPipeline(renderPass);
@@ -35,7 +35,18 @@ void SimpleRenderSystem::createPipelineLayout(VkDescriptorSetLayout globalSetLay
 	pushConstantRange.offset = 0;
 	pushConstantRange.size = sizeof(SimplePushConstantData);
 
-	std::vector<VkDescriptorSetLayout> descriptorSetLayouts{globalSetLayout};
+	renderSystemLayout =
+		DescriptorSetLayout::Builder(lvrDevice)
+			.addBinding(
+				0,
+				VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,
+				VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT)
+			.addBinding(1, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, VK_SHADER_STAGE_FRAGMENT_BIT)
+			.build();
+
+	std::vector<VkDescriptorSetLayout> descriptorSetLayouts{
+		globalSetLayout,
+		renderSystemLayout->getDescriptorSetLayout()};
 
 	VkPipelineLayoutCreateInfo pipelineLayoutInfo{};
 	pipelineLayoutInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
@@ -60,16 +71,15 @@ void SimpleRenderSystem::createPipeline(VkRenderPass renderPass) {
 	pipelineConfig.pipelineLayout = pipelineLayout;
 	lvrPipeline = std::make_unique<Pipeline>(
 		lvrDevice,
-		(std::vector<std::string>){
+		std::vector<std::string>{
 			"shaders/simple_shader.vert",
 			"shaders/simple_shader.frag",
 		},
 		pipelineConfig);
 }
 
-void SimpleRenderSystem::renderGameObjects(FrameInfo &frameInfo) {
+void SimpleRenderSystem::renderGameObjects(FrameInfo& frameInfo) {
 	lvrPipeline->bind(frameInfo.commandBuffer);
-
 	auto projectionView = frameInfo.camera.getProjection() * frameInfo.camera.getView();
 
 	vkCmdBindDescriptorSets(
@@ -82,16 +92,32 @@ void SimpleRenderSystem::renderGameObjects(FrameInfo &frameInfo) {
 		0,
 		nullptr);
 
-	for (auto &kv : frameInfo.gameObjects) {
-		auto &obj = kv.second;
+	for (auto& kv : frameInfo.gameObjects) {
+		auto& obj = kv.second;
 		if (obj.model == nullptr) continue;
-		// obj.tranform.rotation.y = glm::mod(obj.tranform.rotation.y + 0.001f,
-		// glm::two_pi<float>());
-		//   obj.tranform.rotation.x = glm::mod(obj.tranform.rotation.x +0.001f,
-		//   glm::two_pi<float>());
+
+		auto bufferInfo = obj.getBufferInfo(frameInfo.frameIndex);
+		auto imageInfo = obj.diffuseMap->getImageInfo();
+		VkDescriptorSet gameObjectDescriptorSet;
+		DescriptorWriter(*renderSystemLayout, frameInfo.frameDescriptorPool)
+			.writeBuffer(0, &bufferInfo)
+			.writeImage(1, &imageInfo)
+			.build(gameObjectDescriptorSet);
+
+		vkCmdBindDescriptorSets(
+			frameInfo.commandBuffer,
+			VK_PIPELINE_BIND_POINT_GRAPHICS,
+			pipelineLayout,
+			1,	// starting set (0 is the globalDescriptorSet, 1 is the set specific to this	//
+				// system)
+			1,	// set count
+			&gameObjectDescriptorSet,
+			0,
+			nullptr);
+
 		SimplePushConstantData push{};
-		push.modelMatrix = obj.tranform.mat4();
-		push.normalMatrix = obj.tranform.normalMatrix();
+		push.modelMatrix = obj.transform.mat4();
+		push.normalMatrix = obj.transform.normalMatrix();
 
 		vkCmdPushConstants(
 			frameInfo.commandBuffer,

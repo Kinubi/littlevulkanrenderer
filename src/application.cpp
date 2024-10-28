@@ -37,6 +37,18 @@ Application::Application() {
 			.setMaxSets(SwapChain::MAX_FRAMES_IN_FLIGHT)
 			.addPoolSize(VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, SwapChain::MAX_FRAMES_IN_FLIGHT)
 			.build();
+
+	// build frame descriptor pools
+	framePools.resize(SwapChain::MAX_FRAMES_IN_FLIGHT);
+	auto framePoolBuilder = DescriptorPool::Builder(lvrDevice)
+								.setMaxSets(1000)
+								.addPoolSize(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 1000)
+								.addPoolSize(VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 1000)
+								.setPoolFlags(VK_DESCRIPTOR_POOL_CREATE_FREE_DESCRIPTOR_SET_BIT);
+	for (int i = 0; i < framePools.size(); i++) {
+		framePools[i] = framePoolBuilder.build();
+	}
+
 	loadGameObjects();
 }
 
@@ -76,7 +88,7 @@ void Application::OnStart() {
 		lvrRenderer.getSwapChainRenderPass(),
 		globalSetLayout->getDescriptorSetLayout());
 
-	viewerObject.tranform.translation.z = -2.5f;
+	viewerObject.transform.translation.z = -2.5f;
 
 	auto currentTime = std::chrono::high_resolution_clock::now();
 	while (!lvrWIndow.shouldClose()) {
@@ -85,6 +97,7 @@ void Application::OnStart() {
 			std::chrono::duration<float, std::chrono::seconds::period>(newTime - currentTime)
 				.count();
 		currentTime = newTime;
+
 		OnUpdate(frameTime);
 	}
 
@@ -95,7 +108,7 @@ void Application::OnUpdate(float dt) {
 	glfwPollEvents();
 
 	cameraController.moveInPlaneXZ(lvrWIndow.getGLFWWindow(), dt, viewerObject);
-	camera.setViewYXZ(viewerObject.tranform.translation, viewerObject.tranform.rotation);
+	camera.setViewYXZ(viewerObject.transform.translation, viewerObject.transform.rotation);
 
 	float aspect = lvrRenderer.getAspectRatio();
 
@@ -103,6 +116,7 @@ void Application::OnUpdate(float dt) {
 
 	if (auto commandBuffer = lvrRenderer.beginFrame()) {
 		int32_t frameIndex = lvrRenderer.getFrameIndex();
+		framePools[frameIndex]->resetPool();
 
 		FrameInfo frameInfo{
 			frameIndex,
@@ -110,7 +124,8 @@ void Application::OnUpdate(float dt) {
 			commandBuffer,
 			camera,
 			globalDescriptorSets[frameIndex],
-			gameObjects};
+			*framePools[frameIndex],
+			gameObjectManager.gameObjects};
 
 		// update
 
@@ -122,8 +137,10 @@ void Application::OnUpdate(float dt) {
 
 		uboBuffers[frameIndex]->writeToBuffer(&ubo);
 		uboBuffers[frameIndex]->flush();
+		gameObjectManager.updateBuffer(frameIndex);
 
 		lvrRenderer.beginSwapChainRenderPass(commandBuffer);
+
 		simpleRenderSystem->renderGameObjects(frameInfo);
 		pointLightSystem->render(frameInfo);
 		lvrRenderer.endSwapChainRenderPass(commandBuffer);
@@ -135,52 +152,45 @@ void Application::loadGameObjects() {
 	std::shared_ptr<Model> smoothModel =
 		Model::createModelFromFile(lvrDevice, "models/smooth_vase.obj");
 
-	auto smoothObject = GameObject::createGameObject();
+	auto& smoothObject = gameObjectManager.createGameObject();
 	smoothObject.model = smoothModel;
-	smoothObject.tranform.translation = {-0.5f, 0.5f, 0.0f};
-	smoothObject.tranform.scale = {0.5f, 0.5f, 0.5f};
-
-	gameObjects.emplace(smoothObject.getId(), std::move(smoothObject));
+	smoothObject.transform.translation = {-0.5f, 0.5f, 0.0f};
+	smoothObject.transform.scale = {0.5f, 0.5f, 0.5f};
 
 	std::shared_ptr<Model> flatModel =
 		Model::createModelFromFile(lvrDevice, "models/flat_vase.obj");
 
-	auto flatObject = GameObject::createGameObject();
+	std::shared_ptr<Texture> marbleTexture =
+		Texture::createTextureFromFile(lvrDevice, "textures/missing.png");
+	auto& flatObject = gameObjectManager.createGameObject();
 	flatObject.model = flatModel;
-	flatObject.tranform.translation = {0.5f, 0.5f, 0.0f};
-	flatObject.tranform.scale = {0.5f, 0.5f, 0.5f};
-
-	gameObjects.emplace(flatObject.getId(), std::move(flatObject));
+	flatObject.diffuseMap = marbleTexture;
+	flatObject.transform.translation = {0.5f, 0.5f, 0.0f};
+	flatObject.transform.scale = {0.5f, 0.5f, 0.5f};
 
 	std::shared_ptr<Model> cubeModel =
 		Model::createModelFromFile(lvrDevice, "models/colored_cube.obj");
 
-	auto cubeObject = GameObject::createGameObject();
+	auto& cubeObject = gameObjectManager.createGameObject();
 	cubeObject.model = cubeModel;
-	cubeObject.tranform.translation = {0.0f, 1.0f, 0.0f};
-	cubeObject.tranform.scale = {0.5f, 0.5f, 0.5f};
-
-	gameObjects.emplace(cubeObject.getId(), std::move(cubeObject));
+	cubeObject.transform.translation = {0.0f, 1.0f, 0.0f};
+	cubeObject.transform.scale = {0.5f, 0.5f, 0.5f};
 
 	std::shared_ptr<Model> quadModel = Model::createModelFromFile(lvrDevice, "models/quad.obj");
 
-	auto quadObject = GameObject::createGameObject();
+	auto& quadObject = gameObjectManager.createGameObject();
 	quadObject.model = quadModel;
-	quadObject.tranform.translation = {0.0f, 0.5f, 0.0f};
-	quadObject.tranform.scale = {1.5f, 1.5f, 1.5f};
-
-	gameObjects.emplace(quadObject.getId(), std::move(quadObject));
+	quadObject.transform.translation = {0.0f, 0.5f, 0.0f};
+	quadObject.transform.scale = {1.5f, 1.5f, 1.5f};
 
 	std::shared_ptr<Model> humanModel =
 		Model::createModelFromFile(lvrDevice, "models/FinalBaseMesh.obj");
 
-	auto humanObject = GameObject::createGameObject();
+	auto& humanObject = gameObjectManager.createGameObject();
 	humanObject.model = humanModel;
-	humanObject.tranform.translation = {0.0f, 0.5f, 0.0f};
-	humanObject.tranform.rotation = {0.0f, 0.0f, 0.5 * glm::two_pi<float>()};
-	humanObject.tranform.scale = {0.1f, 0.1f, 0.1};
-
-	gameObjects.emplace(humanObject.getId(), std::move(humanObject));
+	humanObject.transform.translation = {0.0f, 0.5f, 0.0f};
+	humanObject.transform.rotation = {0.0f, 0.0f, 0.5 * glm::two_pi<float>()};
+	humanObject.transform.scale = {0.1f, 0.1f, 0.1};
 
 	std::vector<glm::vec3> lightColors{
 		{1.f, .1f, .1f},
@@ -192,16 +202,15 @@ void Application::loadGameObjects() {
 	};
 
 	for (int32_t i = 0; i < lightColors.size(); i++) {
-		auto pointLight = GameObject::makePointLight(0.2f);
+		auto& pointLight = gameObjectManager.makePointLight(0.2f);
 		pointLight.color = glm::vec4(lightColors[i], 1.0f);
 		auto rotateLight = glm::rotate(
 			glm::mat4(1.0f),
 			(i * glm::two_pi<float>()) / lightColors.size(),
 			{0.0f, -1.0f, 0.0f});
 
-		pointLight.tranform.translation =
+		pointLight.transform.translation =
 			glm::vec3(rotateLight * glm::vec4(-1.0f, -1.0f, -1.0f, 1.0f));
-		gameObjects.emplace(pointLight.getId(), std::move(pointLight));
 	}
 }
 

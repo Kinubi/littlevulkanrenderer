@@ -67,7 +67,7 @@ void PointLightSystem::createPipeline(VkRenderPass renderPass) {
 	pipelineConfig.pipelineLayout = pipelineLayout;
 	lvrPipeline = std::make_unique<Pipeline>(
 		lvrDevice,
-		(const std::vector<std::string>){"shaders/point_light.vert", "shaders/point_light.frag"},
+		std::vector<std::string>{"shaders/point_light.vert", "shaders/point_light.frag"},
 		pipelineConfig);
 }
 
@@ -80,9 +80,9 @@ void PointLightSystem::update(FrameInfo &frameInfo, GlobalUbo &ubo) {
 
 		assert(lightIndex < MAX_LIGHTS && "Point lights exceed maximum specified");
 
-		obj.tranform.translation =
-			glm::vec3(rotateLight * glm::vec4(obj.tranform.translation, 1.0f));
-		ubo.pointLights[lightIndex].position = glm::vec4(obj.tranform.translation, 1.0f);
+		obj.transform.translation =
+			glm::vec3(rotateLight * glm::vec4(obj.transform.translation, 1.0f));
+		ubo.pointLights[lightIndex].position = glm::vec4(obj.transform.translation, 1.0f);
 		ubo.pointLights[lightIndex].color =
 			glm::vec4(obj.color.x, obj.color.y, obj.color.z, obj.pointLight->lightIntensity);
 
@@ -99,7 +99,7 @@ void PointLightSystem::render(FrameInfo &frameInfo) {
 		if (obj.pointLight == nullptr) continue;
 
 		// calc dist
-		auto offset = frameInfo.camera.getCameraPosition() - obj.tranform.translation;
+		auto offset = frameInfo.camera.getCameraPosition() - obj.transform.translation;
 		float distSquared = glm::dot(offset, offset);
 		sorted[distSquared] = obj.getId();
 	}
@@ -119,10 +119,10 @@ void PointLightSystem::render(FrameInfo &frameInfo) {
 		auto &obj = frameInfo.gameObjects.at(it->second);
 
 		PointLightPushConstants push{};
-		push.position = glm::vec4(obj.tranform.translation, 1.0f);
+		push.position = glm::vec4(obj.transform.translation, 1.0f);
 		push.color =
 			glm::vec4(obj.color.x, obj.color.y, obj.color.z, obj.pointLight->lightIntensity);
-		push.radius = obj.tranform.scale.x;
+		push.radius = obj.transform.scale.x;
 
 		vkCmdPushConstants(
 			frameInfo.commandBuffer,

@@ -16,13 +16,14 @@ void KeyboardMovementController::moveInPlaneXZ(
 	if (glfwGetKey(window, keys.lookDown) == GLFW_PRESS) rotate.x -= 1.0f;
 
 	if (glm::dot(rotate, rotate) > std::numeric_limits<float>::epsilon()) {
-		gameObject.tranform.rotation += lookSpeed * dt * glm::normalize(rotate);
+		gameObject.transform.rotation += lookSpeed * dt * glm::normalize(rotate);
 	}
 
-	gameObject.tranform.rotation.x = glm::clamp(gameObject.tranform.rotation.x, -1.5f, 1.5f);
-	gameObject.tranform.rotation.y = glm::mod(gameObject.tranform.rotation.y, glm::two_pi<float>());
+	gameObject.transform.rotation.x = glm::clamp(gameObject.transform.rotation.x, -1.5f, 1.5f);
+	gameObject.transform.rotation.y =
+		glm::mod(gameObject.transform.rotation.y, glm::two_pi<float>());
 
-	float yaw = gameObject.tranform.rotation.y;
+	float yaw = gameObject.transform.rotation.y;
 	const glm::vec3 forwardDir(sin(yaw), 0.0f, cos(yaw));
 	const glm::vec3 righDir{forwardDir.z, 0.0f, forwardDir.x};
 
@@ -37,7 +38,7 @@ void KeyboardMovementController::moveInPlaneXZ(
 	if (glfwGetKey(window, keys.moveLeft) == GLFW_PRESS) moveDir -= righDir;
 
 	if (glm::dot(moveDir, moveDir) > std::numeric_limits<float>::epsilon()) {
-		gameObject.tranform.translation += moveSpeed * dt * glm::normalize(moveDir);
+		gameObject.transform.translation += moveSpeed * dt * glm::normalize(moveDir);
 	}
 }
 }  // namespace lvr

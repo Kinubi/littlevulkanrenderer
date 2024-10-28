@@ -19,7 +19,7 @@ endif
 # #############################################
 
 RESCOMP = windres
-DEFINES += -DGLM_FORCE_RADIANS -DGLM_FORCE_DEPTH_ZERO_TO_ONE -DGLM_ENABLE_EXPERIMENTAL -DHZ_PLATFORM_LINUX -D__EMULATE_UUID -DBACKWARD_HAS_DW -DBACKWARD_HAS_LIBUNWIND
+DEFINES += -DGLM_FORCE_RADIANS -DGLM_FORCE_DEPTH_ZERO_TO_ONE -DGLM_ENABLE_EXPERIMENTAL -DLVR_PLATFORM_LINUX
 INCLUDES += -Isrc -Iinclude
 FORCE_INCLUDE +=
 ALL_CPPFLAGS += $(CPPFLAGS) -MD -MP $(DEFINES) $(INCLUDES)
@@ -77,7 +77,7 @@ GENERATED += $(OBJDIR)/renderer.o
 GENERATED += $(OBJDIR)/shader.o
 GENERATED += $(OBJDIR)/simplerendersystem.o
 GENERATED += $(OBJDIR)/swapchain.o
-GENERATED += $(OBJDIR)/waylandwindow.o
+GENERATED += $(OBJDIR)/texture.o
 GENERATED += $(OBJDIR)/window.o
 OBJECTS += $(OBJDIR)/application.o
 OBJECTS += $(OBJDIR)/buffer.o
@@ -94,7 +94,7 @@ OBJECTS += $(OBJDIR)/renderer.o
 OBJECTS += $(OBJDIR)/shader.o
 OBJECTS += $(OBJDIR)/simplerendersystem.o
 OBJECTS += $(OBJDIR)/swapchain.o
-OBJECTS += $(OBJDIR)/waylandwindow.o
+OBJECTS += $(OBJDIR)/texture.o
 OBJECTS += $(OBJDIR)/window.o
 
 # Rules
@@ -189,9 +189,6 @@ $(OBJDIR)/model.o: src/model.cpp
 $(OBJDIR)/pipeline.o: src/pipeline.cpp
 	@echo "$(notdir $<)"
 	$(SILENT) $(CXX) $(ALL_CXXFLAGS) $(FORCE_INCLUDE) -o "$@" -MF "$(@:%.o=%.d)" -c "$<"
-$(OBJDIR)/waylandwindow.o: src/platform/waylandwindow.cpp
-	@echo "$(notdir $<)"
-	$(SILENT) $(CXX) $(ALL_CXXFLAGS) $(FORCE_INCLUDE) -o "$@" -MF "$(@:%.o=%.d)" -c "$<"
 $(OBJDIR)/renderer.o: src/renderer.cpp
 	@echo "$(notdir $<)"
 	$(SILENT) $(CXX) $(ALL_CXXFLAGS) $(FORCE_INCLUDE) -o "$@" -MF "$(@:%.o=%.d)" -c "$<"
@@ -205,6 +202,9 @@ $(OBJDIR)/point_light_system.o: src/systems/point_light_system.cpp
 	@echo "$(notdir $<)"
 	$(SILENT) $(CXX) $(ALL_CXXFLAGS) $(FORCE_INCLUDE) -o "$@" -MF "$(@:%.o=%.d)" -c "$<"
 $(OBJDIR)/simplerendersystem.o: src/systems/simplerendersystem.cpp
+	@echo "$(notdir $<)"
+	$(SILENT) $(CXX) $(ALL_CXXFLAGS) $(FORCE_INCLUDE) -o "$@" -MF "$(@:%.o=%.d)" -c "$<"
+$(OBJDIR)/texture.o: src/textures/texture.cpp
 	@echo "$(notdir $<)"
 	$(SILENT) $(CXX) $(ALL_CXXFLAGS) $(FORCE_INCLUDE) -o "$@" -MF "$(@:%.o=%.d)" -c "$<"
 $(OBJDIR)/window.o: src/window.cpp

@@ -2,7 +2,7 @@
     "version": "2.0.0",
     "tasks": [
         {
-            "label": "build",
+            "label": "build debug",
             "type": "shell",
             "group": {
                 "kind": "build",
@@ -16,10 +16,10 @@
                 ]
             },
             "linux": {
-                "command": "bash",
+                "command": "./build.sh",
                 "args": [
-                    "-c",
-                    "make"
+                    "debug",
+                    "all"
                 ]
             },
             "osx": {
@@ -31,7 +31,7 @@
             }
         },
         {
-            "label": "build & run",
+            "label": "build release",
             "type": "shell",
             "windows": {
                 "command": "powershell",
@@ -41,10 +41,10 @@
                 ]
             },
             "linux": {
-                "command": "bash",
+                "command": "./build.sh",
                 "args": [
-                    "-c",
-                    "'make run'"
+                    "release",
+                    "all"
                 ]
             },
             "osx": {
@@ -56,7 +56,7 @@
             }
         },
         {
-            "label": "clean",
+            "label": "clean debug",
             "type": "shell",
             "windows": {
                 "command": "powershell",
@@ -66,10 +66,35 @@
                 ]
             },
             "linux": {
+                "command": "./build",
+                "args": [
+                    "debug",
+                    "clean"
+                ]
+            },
+            "osx": {
                 "command": "bash",
                 "args": [
                     "-c",
                     "'make clean'"
+                ]
+            }
+        },
+        {
+            "label": "clean release",
+            "type": "shell",
+            "windows": {
+                "command": "powershell",
+                "args": [
+                    "-c",
+                    "'mingw32-make clean'"
+                ]
+            },
+            "linux": {
+                "command": "./build",
+                "args": [
+                    "release",
+                    "clean"
                 ]
             },
             "osx": {

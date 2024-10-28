@@ -31,7 +31,7 @@ struct Source {
 
 class Shader {
    public:
-	Shader(const std::string& filePath);
+	Shader(Device& device, const std::string& filePath);
 
 	~Shader();
 
@@ -50,6 +50,7 @@ class Shader {
 	void Reflect(Source& source);
 
    private:
+	Device& device;
 	Source source{};
 
 	ShaderInfo shaderInfo{};

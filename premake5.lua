@@ -4,6 +4,7 @@ workspace "LVR"
 	configurations { "Debug",  "Release"}
     conformancemode "On"
 
+
 project "LVR"
 	kind "ConsoleApp"
 	language "C++"
@@ -24,10 +25,13 @@ project "LVR"
 		"src/**.cpp",
 	}
 
+	
 	includedirs { "src",
 	 			"%{IncludeDir.includes}",
-				--"%{IncludeDir.VulkanSDK}"
+
 			}
+
+	removefiles { "src/platform/linux/**.h","src/platform/linux/**.cpp" }
 
 	defines {
 		"GLM_FORCE_RADIANS",
@@ -35,25 +39,27 @@ project "LVR"
 		"GLM_ENABLE_EXPERIMENTAL"
 	}
 
+	links
+	{
+		"%{Library.ShaderC}",
+		"%{Library.SPIRV_Cross}",
+		"%{Library.SPIRV_Cross_GLSL}",
+		"%{Library.Vulkan}",
+		"%{Library.glfw}",
+	}
+
+
     filter "action:vs*"
         linkoptions { "/ignore:4099" } -- NOTE(Peter): Disable no PDB found warning
         disablewarnings { "4068" } -- Disable "Unknown #pragma mark warning"
 
-	filter "language:C++ or language:C"
-		architecture "x86_64"
+	
+
+
 
 	filter "configurations:Debug"
 		optimize "Off"
 		symbols "On"
-
-
-		links
-		{
-			"%{Library.ShaderC}",
-			"%{Library.SPIRV_Cross}",
-			"%{Library.SPIRV_Cross_GLSL}"
-		}
-
 
 
 	filter "configurations:Release"
@@ -62,26 +68,28 @@ project "LVR"
 		vectorextensions "AVX2"
 		isaextensions { "BMI", "POPCNT", "LZCNT", "F16C" }
 
-		links
-		{
-			"%{Library.ShaderC}",
-			"%{Library.SPIRV_Cross}",
-			"%{Library.SPIRV_Cross_GLSL}"
-		}
-
 
 	filter "system:windows"
 		buildoptions { "/EHsc", "/Zc:preprocessor", "/Zc:__cplusplus" }
 
-	filter "system:linux"
-		defines { "HZ_PLATFORM_LINUX", "__EMULATE_UUID", "BACKWARD_HAS_DW", "BACKWARD_HAS_LIBUNWIND" }
+	filter "system:linux"	
+		architecture "x86_64"	
+		defines { "LVR_PLATFORM_LINUX"}
 		links { "dw", "dl", "unwind", "pthread", "vulkan","glfw", "wayland-client" }
 		buildoptions { "-march=x86-64-v3" }
-	
-	outputdir = "%{cfg.buildcfg}-%{cfg.system}-%{cfg.architecture}"
+		outputdir = "%{cfg.buildcfg}-%{cfg.system}-%{cfg.architecture}"
+		targetdir ("bin/" .. outputdir .. "/%{prj.name}")
+		objdir ("bin-int/" .. outputdir .. "/%{prj.name}")
 
-	targetdir ("bin/" .. outputdir .. "/%{prj.name}")
-	objdir ("bin-int/" .. outputdir .. "/%{prj.name}")
+
+	filter "system:macosx"
+		architecture "aarch64"
+		defines { "LVR_PLATFORM_MACOS"}
+		links {   "vulkan","glfw" }
+		outputdir = "%{cfg.buildcfg}-%{cfg.system}-%{cfg.architecture}"
+	
+		targetdir ("bin/" .. outputdir .. "/%{prj.name}")
+		objdir ("bin-int/" .. outputdir .. "/%{prj.name}")
 
 
 

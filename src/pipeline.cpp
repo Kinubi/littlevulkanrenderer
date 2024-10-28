@@ -23,13 +23,7 @@ Pipeline::Pipeline(
 	createGraphicsPipeline(filePaths, configInfo);
 }
 
-Pipeline::~Pipeline() {
-	for (auto &shader : shaders) {
-		vkDestroyShaderModule(device.device(), shader->getShaderInfo().shaderModule, nullptr);
-		vkDestroyShaderModule(device.device(), shader->getShaderInfo().shaderModule, nullptr);
-	}
-	vkDestroyPipeline(device.device(), graphicsPipeline, nullptr);
-}
+Pipeline::~Pipeline() { vkDestroyPipeline(device.device(), graphicsPipeline, nullptr); }
 
 void Pipeline::createGraphicsPipeline(
 	const std::vector<std::string> filePaths, const PipelineConfigInfo &configInfo) {
@@ -50,7 +44,7 @@ void Pipeline::createGraphicsPipeline(
 
 	shaders = Shader::Create(device, filePaths);
 
-	for (int32_t i; i < shaders.size(); i++) {
+	for (int32_t i = 0; i < shaders.size(); i++) {
 		createInfos[i] = shaders[i]->getShaderInfo().shaderCreateInfo;
 	}
 
@@ -64,6 +58,7 @@ void Pipeline::createGraphicsPipeline(
 		static_cast<uint32_t>(bindingDescriptions.size());
 	vertexInputInfo.pVertexAttributeDescriptions = attributeDescriptions.data();
 	vertexInputInfo.pVertexBindingDescriptions = bindingDescriptions.data();
+
 	VkGraphicsPipelineCreateInfo pipelineInfo{};
 	pipelineInfo.sType = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO;
 	pipelineInfo.stageCount = shaders.size();
