@@ -94,7 +94,8 @@ void Pipeline::bind(VkCommandBuffer commandBuffer) {
 	vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, graphicsPipeline);
 }
 
-void Pipeline::defaultPipelineConfigInfo(PipelineConfigInfo &configInfo) {
+void Pipeline::defaultPipelineConfigInfo(
+	PipelineConfigInfo &configInfo, VkSampleCountFlagBits msaaSamples) {
 	configInfo.inputAssemblyInfo.sType =
 		VK_STRUCTURE_TYPE_PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO;
 	configInfo.inputAssemblyInfo.topology = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST;
@@ -120,11 +121,11 @@ void Pipeline::defaultPipelineConfigInfo(PipelineConfigInfo &configInfo) {
 
 	configInfo.multisampleInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_MULTISAMPLE_STATE_CREATE_INFO;
 	configInfo.multisampleInfo.sampleShadingEnable = VK_FALSE;
-	configInfo.multisampleInfo.rasterizationSamples = VK_SAMPLE_COUNT_1_BIT;
-	configInfo.multisampleInfo.minSampleShading = 1.0f;			  // Optional
-	configInfo.multisampleInfo.pSampleMask = nullptr;			  // Optional
-	configInfo.multisampleInfo.alphaToCoverageEnable = VK_FALSE;  // Optional
-	configInfo.multisampleInfo.alphaToOneEnable = VK_FALSE;		  // Optional
+	configInfo.multisampleInfo.minSampleShading = 1.0f;
+	configInfo.multisampleInfo.rasterizationSamples = msaaSamples;	// Optional
+	configInfo.multisampleInfo.pSampleMask = nullptr;				// Optional
+	configInfo.multisampleInfo.alphaToCoverageEnable = VK_FALSE;	// Optional
+	configInfo.multisampleInfo.alphaToOneEnable = VK_FALSE;			// Optional
 
 	configInfo.colorBlendAttachment.colorWriteMask =
 		VK_COLOR_COMPONENT_R_BIT | VK_COLOR_COMPONENT_G_BIT | VK_COLOR_COMPONENT_B_BIT |

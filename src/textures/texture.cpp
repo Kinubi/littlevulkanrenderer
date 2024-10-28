@@ -131,8 +131,8 @@ void Texture::createTextureImage(const std::string &filepath) {
 		throw std::runtime_error("failed to load texture image!");
 	}
 
-	// mMipLevels = static_cast<uint32_t>(std::floor(std::log2(std::max(texWidth, texHeight)))) + 1;
-	mMipLevels = 1;
+	mMipLevels = static_cast<uint32_t>(std::floor(std::log2(std::max(texWidth, texHeight)))) + 1;
+	// mMipLevels = 1;
 
 	VkBuffer stagingBuffer;
 	VkDeviceMemory stagingBufferMemory;
@@ -165,7 +165,7 @@ void Texture::createTextureImage(const std::string &filepath) {
 	imageInfo.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
 	imageInfo.usage = VK_IMAGE_USAGE_TRANSFER_SRC_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT |
 					  VK_IMAGE_USAGE_SAMPLED_BIT;
-	imageInfo.samples = VK_SAMPLE_COUNT_1_BIT;
+	imageInfo.samples = mDevice.getMsaaSamples();
 	imageInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
 
 	mDevice.createImageWithInfo(
@@ -188,16 +188,16 @@ void Texture::createTextureImage(const std::string &filepath) {
 		mLayerCount);
 
 	// comment this out if using mips
-	mDevice.transitionImageLayout(
-		mTextureImage,
-		VK_FORMAT_R8G8B8A8_SRGB,
-		VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
-		VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
-		mMipLevels,
-		mLayerCount);
+	// mDevice.transitionImageLayout(
+	// 	mTextureImage,
+	// 	VK_FORMAT_R8G8B8A8_SRGB,
+	// 	VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
+	// 	VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
+	// 	mMipLevels,
+	// 	mLayerCount);
 
 	// If we generate mip maps then the final image will alerady be READ_ONLY_OPTIMAL
-	// mDevice.generateMipmaps(mTextureImage, mFormat, texWidth, texHeight, mMipLevels);
+	mDevice.generateMipmaps(mTextureImage, mFormat, texWidth, texHeight, mMipLevels);
 	mTextureLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
 
 	vkDestroyBuffer(mDevice.device(), stagingBuffer, nullptr);
