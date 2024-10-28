@@ -44,8 +44,7 @@ project "LVR"
 		"%{Library.ShaderC}",
 		"%{Library.SPIRV_Cross}",
 		"%{Library.SPIRV_Cross_GLSL}",
-		"%{Library.Vulkan}",
-		"%{Library.glfw}",
+
 	}
 
 
@@ -86,8 +85,8 @@ project "LVR"
 		architecture "aarch64"
 		defines { "LVR_PLATFORM_MACOS"}
 		links {   "vulkan","glfw" }
-		outputdir = "%{cfg.buildcfg}-%{cfg.system}-%{cfg.architecture}"
-	
+
+		outputdir = "%{cfg.buildcfg}-%{cfg.system}-%{cfg.architecture}"	
 		targetdir ("bin/" .. outputdir .. "/%{prj.name}")
 		objdir ("bin-int/" .. outputdir .. "/%{prj.name}")
 

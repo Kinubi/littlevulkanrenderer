@@ -60,4 +60,4 @@ class Texture {
 	VkExtent3D mExtent{};
 };
 
-}  // namespace
+}  // namespace lvr

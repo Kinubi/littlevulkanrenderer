@@ -83,7 +83,12 @@ class Device {
 		uint32_t mipLevels,
 		uint32_t layerCount);
 
+	void generateMipmaps(
+		VkImage image, VkFormat format, uint32_t texWidth, uint32_t texHeight, uint32_t mipLevels);
+
 	VkPhysicalDeviceProperties properties;
+
+	VkSampleCountFlagBits getMsaaSamples() { return msaaSamples; }
 
    private:
 	void createInstance();
@@ -92,6 +97,8 @@ class Device {
 	void pickPhysicalDevice();
 	void createLogicalDevice();
 	void createCommandPool();
+
+	VkSampleCountFlagBits getMaxUsableSampleCount();
 
 	// helper functions
 	bool isDeviceSuitable(VkPhysicalDevice Device);
@@ -108,6 +115,7 @@ class Device {
 	VkPhysicalDevice physicalDevice = VK_NULL_HANDLE;
 	Window& window;
 	VkCommandPool commandPool;
+	VkSampleCountFlagBits msaaSamples = VK_SAMPLE_COUNT_1_BIT;
 
 	VkDevice Device_;
 	VkSurfaceKHR surface_;
