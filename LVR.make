@@ -19,12 +19,12 @@ endif
 # #############################################
 
 RESCOMP = windres
-DEFINES += -DGLM_FORCE_RADIANS -DGLM_FORCE_DEPTH_ZERO_TO_ONE -DGLM_ENABLE_EXPERIMENTAL -DLVR_PLATFORM_MACOS
-INCLUDES += -Isrc -Iinclude -I../../VulkanSDK/1.3.296.0/macOS/Include
+DEFINES += -DGLM_FORCE_RADIANS -DGLM_FORCE_DEPTH_ZERO_TO_ONE -DGLM_ENABLE_EXPERIMENTAL -DLVR_PLATFORM_LINUX
+INCLUDES += -Isrc -Iinclude
 FORCE_INCLUDE +=
 ALL_CPPFLAGS += $(CPPFLAGS) -MD -MP $(DEFINES) $(INCLUDES)
 ALL_RESFLAGS += $(RESFLAGS) $(DEFINES) $(INCLUDES)
-LIBS += -lshaderc_shared -lspirv-cross-core -lspirv-cross-glsl -l -lvulkan -lglfw
+LIBS += -lshaderc_shared -lspirv-cross-core -lspirv-cross-glsl -ldw -ldl -lunwind -lpthread -lvulkan -lglfw -lwayland-client
 LDDEPS +=
 LINKCMD = $(CXX) -o "$@" $(OBJECTS) $(RESOURCES) $(ALL_LDFLAGS) $(LIBS)
 define PREBUILDCMDS
@@ -35,20 +35,20 @@ define POSTBUILDCMDS
 endef
 
 ifeq ($(config),debug)
-TARGETDIR = bin/Debug-macosx-aarch64/LVR
+TARGETDIR = bin/Debug-linux-x86_64/LVR
 TARGET = $(TARGETDIR)/LVR
-OBJDIR = bin-int/Debug-macosx-aarch64/LVR
-ALL_CFLAGS += $(CFLAGS) $(ALL_CPPFLAGS) -O0 -g
-ALL_CXXFLAGS += $(CXXFLAGS) $(ALL_CPPFLAGS) -O0 -g -std=c++20
-ALL_LDFLAGS += $(LDFLAGS)
+OBJDIR = bin-int/Debug-linux-x86_64/LVR
+ALL_CFLAGS += $(CFLAGS) $(ALL_CPPFLAGS) -m64 -O0 -g -march=x86-64-v3
+ALL_CXXFLAGS += $(CXXFLAGS) $(ALL_CPPFLAGS) -m64 -O0 -g -std=c++20 -march=x86-64-v3
+ALL_LDFLAGS += $(LDFLAGS) -L/usr/lib64 -m64
 
 else ifeq ($(config),release)
-TARGETDIR = bin/Release-macosx-aarch64/LVR
+TARGETDIR = bin/Release-linux-x86_64/LVR
 TARGET = $(TARGETDIR)/LVR
-OBJDIR = bin-int/Release-macosx-aarch64/LVR
-ALL_CFLAGS += $(CFLAGS) $(ALL_CPPFLAGS) -mbmi -mpopcnt -mlzcnt -mf16c -O3 -mavx2
-ALL_CXXFLAGS += $(CXXFLAGS) $(ALL_CPPFLAGS) -mbmi -mpopcnt -mlzcnt -mf16c -O3 -mavx2 -std=c++20
-ALL_LDFLAGS += $(LDFLAGS) -Wl,-x
+OBJDIR = bin-int/Release-linux-x86_64/LVR
+ALL_CFLAGS += $(CFLAGS) $(ALL_CPPFLAGS) -m64 -mbmi -mpopcnt -mlzcnt -mf16c -O3 -mavx2 -march=x86-64-v3
+ALL_CXXFLAGS += $(CXXFLAGS) $(ALL_CPPFLAGS) -m64 -mbmi -mpopcnt -mlzcnt -mf16c -O3 -mavx2 -std=c++20 -march=x86-64-v3
+ALL_LDFLAGS += $(LDFLAGS) -L/usr/lib64 -m64 -s
 
 endif
 
