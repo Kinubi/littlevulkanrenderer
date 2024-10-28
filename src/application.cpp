@@ -20,8 +20,6 @@
 #include "keyboard_movement_controller.h"
 #include "model.h"
 #include "swapchain.h"
-#include "systems/point_light_system.h"
-#include "systems/simplerendersystem.h"
 #include "window.h"
 
 // std

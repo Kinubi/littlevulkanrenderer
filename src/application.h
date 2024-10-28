@@ -10,9 +10,9 @@
 #include "gameobject.h"
 #include "keyboard_movement_controller.h"
 #include "renderer.h"
+#include "shaders/systems/point_light_system.h"
+#include "shaders/systems/simplerendersystem.h"
 #include "swapchain.h"
-#include "systems/point_light_system.h"
-#include "systems/simplerendersystem.h"
 #include "window.h"
 
 // std

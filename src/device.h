@@ -6,6 +6,7 @@
 
 #include <vulkan/vulkan_core.h>
 
+#include <optional>
 #include <string>
 #include <vector>
 
@@ -18,11 +19,10 @@ struct SwapChainSupportDetails {
 };
 
 struct QueueFamilyIndices {
-	uint32_t graphicsFamily;
-	uint32_t presentFamily;
-	bool graphicsFamilyHasValue = false;
-	bool presentFamilyHasValue = false;
-	bool isComplete() { return graphicsFamilyHasValue && presentFamilyHasValue; }
+	std::optional<uint32_t> graphicsAndComputeFamily;
+	std::optional<uint32_t> presentFamily;
+
+	bool isComplete() { return graphicsAndComputeFamily.has_value() && presentFamily.has_value(); };
 };
 
 class Device {
@@ -113,6 +113,7 @@ class Device {
 	VkSurfaceKHR surface_;
 	VkQueue graphicsQueue_;
 	VkQueue presentQueue_;
+	VkQueue computeQueue_;
 
 	const std::vector<const char*> validationLayers = {"VK_LAYER_KHRONOS_validation"};
 	const std::vector<const char*> DeviceExtensions = {VK_KHR_SWAPCHAIN_EXTENSION_NAME};

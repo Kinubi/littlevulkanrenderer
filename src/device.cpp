@@ -143,7 +143,9 @@ void Device::createLogicalDevice() {
 	QueueFamilyIndices indices = findQueueFamilies(physicalDevice);
 
 	std::vector<VkDeviceQueueCreateInfo> queueCreateInfos;
-	std::set<uint32_t> uniqueQueueFamilies = {indices.graphicsFamily, indices.presentFamily};
+	std::set<uint32_t> uniqueQueueFamilies = {
+		indices.graphicsAndComputeFamily.value(),
+		indices.presentFamily.value()};
 
 	float queuePriority = 1.0f;
 	for (uint32_t queueFamily : uniqueQueueFamilies) {
@@ -181,8 +183,9 @@ void Device::createLogicalDevice() {
 		throw std::runtime_error("failed to create logical Device!");
 	}
 
-	vkGetDeviceQueue(Device_, indices.graphicsFamily, 0, &graphicsQueue_);
-	vkGetDeviceQueue(Device_, indices.presentFamily, 0, &presentQueue_);
+	vkGetDeviceQueue(Device_, indices.graphicsAndComputeFamily.value(), 0, &graphicsQueue_);
+	vkGetDeviceQueue(Device_, indices.graphicsAndComputeFamily.value(), 0, &computeQueue_);
+	vkGetDeviceQueue(Device_, indices.presentFamily.value(), 0, &presentQueue_);
 }
 
 void Device::createCommandPool() {
@@ -190,7 +193,7 @@ void Device::createCommandPool() {
 
 	VkCommandPoolCreateInfo poolInfo = {};
 	poolInfo.sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO;
-	poolInfo.queueFamilyIndex = queueFamilyIndices.graphicsFamily;
+	poolInfo.queueFamilyIndex = queueFamilyIndices.graphicsAndComputeFamily.value();
 	poolInfo.flags =
 		VK_COMMAND_POOL_CREATE_TRANSIENT_BIT | VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT;
 
@@ -339,15 +342,14 @@ QueueFamilyIndices Device::findQueueFamilies(VkPhysicalDevice Device) {
 
 	int i = 0;
 	for (const auto& queueFamily : queueFamilies) {
-		if (queueFamily.queueCount > 0 && queueFamily.queueFlags & VK_QUEUE_GRAPHICS_BIT) {
-			indices.graphicsFamily = i;
-			indices.graphicsFamilyHasValue = true;
+		if ((queueFamily.queueCount > 0) && (queueFamily.queueFlags & VK_QUEUE_GRAPHICS_BIT) &&
+			(queueFamily.queueFlags & VK_QUEUE_COMPUTE_BIT)) {
+			indices.graphicsAndComputeFamily = i;
 		}
 		VkBool32 presentSupport = false;
 		vkGetPhysicalDeviceSurfaceSupportKHR(Device, i, surface_, &presentSupport);
 		if (queueFamily.queueCount > 0 && presentSupport) {
 			indices.presentFamily = i;
-			indices.presentFamilyHasValue = true;
 		}
 		if (indices.isComplete()) {
 			break;

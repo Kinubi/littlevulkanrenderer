@@ -20,13 +20,17 @@ namespace lvr {
 Pipeline::Pipeline(
 	Device &device, const std::vector<std::string> filePaths, const PipelineConfigInfo &configInfo)
 	: device(device) {
-	createGraphicsPipeline(filePaths, configInfo);
+	createShaders(filePaths);
+	createGraphicsPipeline(configInfo);
+	createComputePipeline(configInfo);
 }
 
-Pipeline::~Pipeline() { vkDestroyPipeline(device.device(), graphicsPipeline, nullptr); }
+Pipeline::~Pipeline() {
+	vkDestroyPipeline(device.device(), graphicsPipeline, nullptr);
+	vkDestroyPipeline(device.device(), computePipeline, nullptr);
+}
 
-void Pipeline::createGraphicsPipeline(
-	const std::vector<std::string> filePaths, const PipelineConfigInfo &configInfo) {
+void Pipeline::createGraphicsPipeline(const PipelineConfigInfo &configInfo) {
 	assert(
 		configInfo.pipelineLayout != VK_NULL_HANDLE &&
 		"Cannot create graphics pipeline: no pipelineLayout provided in "
@@ -36,17 +40,6 @@ void Pipeline::createGraphicsPipeline(
 		configInfo.renderPass != VK_NULL_HANDLE &&
 		"Cannot create graphics pipeline: no renderpass provided in "
 		"configInfo");
-
-	shaders.resize(filePaths.size());
-
-	// Shader::Create(device, filePaths[0], shaderStages[0]);
-	// Shader::Create(device, filePaths[1], shaderStages[1]);
-
-	shaders = Shader::Create(device, filePaths);
-
-	for (int32_t i = 0; i < shaders.size(); i++) {
-		createInfos[i] = shaders[i]->getShaderInfo().shaderCreateInfo;
-	}
 
 	auto &bindingDescriptions = configInfo.bindingDescriptions;
 	auto &attributeDescriptions = configInfo.attributeDescriptions;
@@ -62,7 +55,7 @@ void Pipeline::createGraphicsPipeline(
 	VkGraphicsPipelineCreateInfo pipelineInfo{};
 	pipelineInfo.sType = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO;
 	pipelineInfo.stageCount = shaders.size();
-	pipelineInfo.pStages = createInfos;
+	pipelineInfo.pStages = createGraphicsInfos;
 	pipelineInfo.pVertexInputState = &vertexInputInfo;
 	pipelineInfo.pInputAssemblyState = &configInfo.inputAssemblyInfo;
 	pipelineInfo.pViewportState = &configInfo.viewportInfo;
@@ -87,6 +80,46 @@ void Pipeline::createGraphicsPipeline(
 			nullptr,
 			&graphicsPipeline) != VK_SUCCESS) {
 		throw std::runtime_error("Failed to create render pipeline");
+	}
+}
+
+void Pipeline::createComputePipeline(const PipelineConfigInfo &configInfo) {
+	if (hasCompute) {
+		VkComputePipelineCreateInfo pipelineInfo{};
+		pipelineInfo.sType = VK_STRUCTURE_TYPE_COMPUTE_PIPELINE_CREATE_INFO;
+		pipelineInfo.layout = configInfo.pipelineLayout;
+		pipelineInfo.stage = createComputeInfo;
+
+		if (vkCreateComputePipelines(
+				device.device(),
+				VK_NULL_HANDLE,
+				1,
+				&pipelineInfo,
+				nullptr,
+				&computePipeline) != VK_SUCCESS) {
+			throw std::runtime_error("failed to create compute pipeline!");
+		}
+	}
+}
+
+void Pipeline::createShaders(const std::vector<std::string> filePaths) {
+	shaders.resize(filePaths.size());
+
+	// Shader::Create(device, filePaths[0], shaderStages[0]);
+	// Shader::Create(device, filePaths[1], shaderStages[1]);
+
+	shaders = Shader::Create(device, filePaths);
+
+	for (int32_t i = 0; i < shaders.size(); i++) {
+		VkShaderStageFlagBits type = shaders[i]->getSource().shaderBitFlags;
+		if ((type == VK_SHADER_STAGE_VERTEX_BIT) || (type == VK_SHADER_STAGE_FRAGMENT_BIT)) {
+			createGraphicsInfos[i] = shaders[i]->getShaderInfo().shaderCreateInfo;
+		}
+		if (type == VK_SHADER_STAGE_COMPUTE_BIT) {
+			createComputeInfo = shaders[i]->getShaderInfo().shaderCreateInfo;
+			hasCompute = true;
+		}
+		std::cout << createGraphicsInfos[i].stage << std::endl;
 	}
 }
 

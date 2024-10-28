@@ -49,15 +49,18 @@ class Pipeline {
 	static void enableAlphaBlending(PipelineConfigInfo &configInfo);
 
    private:
-	void createGraphicsPipeline(
-		const std::vector<std::string> filePaths, const PipelineConfigInfo &configInfo);
+	void createGraphicsPipeline(const PipelineConfigInfo &configInfo);
+	void createComputePipeline(const PipelineConfigInfo &configInfo);
 
-	void createShaders(const std::string &fragFilepath, const std::string &vertFilepath);
+	void createShaders(const std::vector<std::string> filePaths);
 
 	Device &device;
 	VkPipeline graphicsPipeline;
+	VkPipeline computePipeline;
 
+	bool hasCompute = false;
 	std::vector<std::unique_ptr<Shader>> shaders{};
-	VkPipelineShaderStageCreateInfo createInfos[];
+	VkPipelineShaderStageCreateInfo createComputeInfo;
+	VkPipelineShaderStageCreateInfo createGraphicsInfos[];
 };
 }  // namespace lvr
