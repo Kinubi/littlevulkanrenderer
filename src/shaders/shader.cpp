@@ -197,7 +197,7 @@ std::unique_ptr<Shader> Shader::Create(Device& device, const std::string& filepa
 std::vector<std::unique_ptr<Shader>> Shader::Create(
 	Device& device, const std::vector<std::string> filePaths) {
 	std::vector<std::unique_ptr<Shader>> shaders;
-	int32_t i = 0;
+
 	for (auto filePath : filePaths) {
 		shaders.push_back(Create(device, filePath));
 	}

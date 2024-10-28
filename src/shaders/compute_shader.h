@@ -8,13 +8,14 @@
 #include "swapchain.h"
 
 namespace lvr {
+template <typename T>
 class ComputeShader {
    public:
 	ComputeShader(
 		Device &device,
 		VkRenderPass renderPass,
 		VkDescriptorSetLayout globalSetLayout,
-		VkDeviceSize bufferSize,
+		const std::vector<T> computeBufferData,
 		std::vector<std::string> filePaths);
 	~ComputeShader() {};
 
@@ -22,7 +23,7 @@ class ComputeShader {
 	ComputeShader &operator=(const ComputeShader &) = delete;
 
    private:
-	void createShaderStorageBuffers(VkDeviceSize bufferSize);
+	void createShaderStorageBuffers(const std::vector<T> computeBufferData);
 	void createPipelineLayout(VkDescriptorSetLayout globalSetLayout);
 	void createPipeline(VkRenderPass renderPass);
 
@@ -31,6 +32,7 @@ class ComputeShader {
 	Device &device;
 
 	std::vector<std::unique_ptr<Buffer>> shaderStorageBuffers;
+	uint32_t bufferCount;
 
 	std::unique_ptr<Pipeline> pipeline;
 	VkPipelineLayout pipelineLayout{};

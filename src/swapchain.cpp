@@ -33,10 +33,7 @@ void SwapChain::init() {
 	createImageViews();
 	createRenderPass();
 	createDepthResources();
-<<<<<<< HEAD
-=======
 	createColorResources();
->>>>>>> refs/remotes/origin/compute-shaders
 	createFramebuffers();
 	createSyncObjects();
 }
@@ -165,17 +162,11 @@ void SwapChain::createSwapChain() {
 	createInfo.imageUsage = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT;
 
 	QueueFamilyIndices indices = device.findPhysicalQueueFamilies();
-<<<<<<< HEAD
 	uint32_t queueFamilyIndices[] = {
 		indices.graphicsAndComputeFamily.value(),
 		indices.presentFamily.value()};
 
 	if (indices.graphicsAndComputeFamily.value() != indices.presentFamily.value()) {
-=======
-	uint32_t queueFamilyIndices[] = {indices.graphicsFamily, indices.presentFamily};
-
-	if (indices.graphicsFamily != indices.presentFamily) {
->>>>>>> refs/remotes/origin/compute-shaders
 		createInfo.imageSharingMode = VK_SHARING_MODE_CONCURRENT;
 		createInfo.queueFamilyIndexCount = 2;
 		createInfo.pQueueFamilyIndices = queueFamilyIndices;
@@ -232,63 +223,6 @@ void SwapChain::createImageViews() {
 }
 
 void SwapChain::createRenderPass() {
-<<<<<<< HEAD
-	VkAttachmentDescription depthAttachment{};
-	depthAttachment.format = findDepthFormat();
-	depthAttachment.samples = VK_SAMPLE_COUNT_1_BIT;
-	depthAttachment.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
-	depthAttachment.storeOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
-	depthAttachment.stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
-	depthAttachment.stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
-	depthAttachment.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
-	depthAttachment.finalLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
-
-	VkAttachmentReference depthAttachmentRef{};
-	depthAttachmentRef.attachment = 1;
-	depthAttachmentRef.layout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
-
-	VkAttachmentDescription colorAttachment = {};
-	colorAttachment.format = getSwapChainImageFormat();
-	colorAttachment.samples = VK_SAMPLE_COUNT_1_BIT;
-	colorAttachment.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
-	colorAttachment.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
-	colorAttachment.stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
-	colorAttachment.stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
-	colorAttachment.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
-	colorAttachment.finalLayout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
-
-	VkAttachmentReference colorAttachmentRef = {};
-	colorAttachmentRef.attachment = 0;
-	colorAttachmentRef.layout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
-
-	VkSubpassDescription subpass = {};
-	subpass.pipelineBindPoint = VK_PIPELINE_BIND_POINT_GRAPHICS;
-	subpass.colorAttachmentCount = 1;
-	subpass.pColorAttachments = &colorAttachmentRef;
-	subpass.pDepthStencilAttachment = &depthAttachmentRef;
-
-	VkSubpassDependency dependency = {};
-	dependency.srcSubpass = VK_SUBPASS_EXTERNAL;
-	dependency.srcAccessMask = 0;
-	dependency.srcStageMask =
-		VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT | VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT;
-	dependency.dstSubpass = 0;
-	dependency.dstStageMask =
-		VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT | VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT;
-	dependency.dstAccessMask =
-		VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT | VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT;
-
-	std::array<VkAttachmentDescription, 2> attachments = {colorAttachment, depthAttachment};
-	VkRenderPassCreateInfo renderPassInfo = {};
-	renderPassInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO;
-	renderPassInfo.attachmentCount = static_cast<uint32_t>(attachments.size());
-	renderPassInfo.pAttachments = attachments.data();
-	renderPassInfo.subpassCount = 1;
-	renderPassInfo.pSubpasses = &subpass;
-	renderPassInfo.dependencyCount = 1;
-	renderPassInfo.pDependencies = &dependency;
-
-=======
 	VkAttachmentDescription colorAttachment{};
 	colorAttachment.format = getSwapChainImageFormat();
 	colorAttachment.samples = device.getMsaaSamples();
@@ -361,7 +295,6 @@ void SwapChain::createRenderPass() {
 	renderPassInfo.dependencyCount = 1;
 	renderPassInfo.pDependencies = &dependency;
 
->>>>>>> refs/remotes/origin/compute-shaders
 	if (vkCreateRenderPass(device.device(), &renderPassInfo, nullptr, &renderPass) != VK_SUCCESS) {
 		throw std::runtime_error("failed to create render pass!");
 	}
@@ -370,14 +303,10 @@ void SwapChain::createRenderPass() {
 void SwapChain::createFramebuffers() {
 	swapChainFramebuffers.resize(imageCount());
 	for (size_t i = 0; i < imageCount(); i++) {
-<<<<<<< HEAD
-		std::array<VkImageView, 2> attachments = {swapChainImageViews[i], depthImageViews[i]};
-=======
 		std::array<VkImageView, 3> attachments = {
 			colorImageViews[i],
 			depthImageViews[i],
 			swapChainImageViews[i]};
->>>>>>> refs/remotes/origin/compute-shaders
 
 		VkExtent2D swapChainExtent = getSwapChainExtent();
 		VkFramebufferCreateInfo framebufferInfo = {};
@@ -421,11 +350,7 @@ void SwapChain::createDepthResources() {
 		imageInfo.tiling = VK_IMAGE_TILING_OPTIMAL;
 		imageInfo.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
 		imageInfo.usage = VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT;
-<<<<<<< HEAD
-		imageInfo.samples = VK_SAMPLE_COUNT_1_BIT;
-=======
 		imageInfo.samples = device.getMsaaSamples();
->>>>>>> refs/remotes/origin/compute-shaders
 		imageInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
 		imageInfo.flags = 0;
 
@@ -453,21 +378,6 @@ void SwapChain::createDepthResources() {
 	}
 }
 
-<<<<<<< HEAD
-void SwapChain::createSyncObjects() {
-	imageAvailableSemaphores.resize(MAX_FRAMES_IN_FLIGHT);
-	renderFinishedSemaphores.resize(MAX_FRAMES_IN_FLIGHT);
-	inFlightFences.resize(MAX_FRAMES_IN_FLIGHT);
-	imagesInFlight.resize(imageCount(), VK_NULL_HANDLE);
-
-	VkSemaphoreCreateInfo semaphoreInfo = {};
-	semaphoreInfo.sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO;
-
-	VkFenceCreateInfo fenceInfo = {};
-	fenceInfo.sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO;
-	fenceInfo.flags = VK_FENCE_CREATE_SIGNALED_BIT;
-
-=======
 void SwapChain::createColorResources() {
 	VkFormat colorFormat = getSwapChainImageFormat();
 	VkExtent2D swapChainExtent = getSwapChainExtent();
@@ -531,7 +441,6 @@ void SwapChain::createSyncObjects() {
 	fenceInfo.sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO;
 	fenceInfo.flags = VK_FENCE_CREATE_SIGNALED_BIT;
 
->>>>>>> refs/remotes/origin/compute-shaders
 	for (size_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++) {
 		if (vkCreateSemaphore(
 				device.device(),

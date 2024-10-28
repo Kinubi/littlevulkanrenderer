@@ -105,9 +105,6 @@ void Pipeline::createComputePipeline(const PipelineConfigInfo &configInfo) {
 void Pipeline::createShaders(const std::vector<std::string> filePaths) {
 	shaders.resize(filePaths.size());
 
-	// Shader::Create(device, filePaths[0], shaderStages[0]);
-	// Shader::Create(device, filePaths[1], shaderStages[1]);
-
 	shaders = Shader::Create(device, filePaths);
 
 	for (int32_t i = 0; i < shaders.size(); i++) {
