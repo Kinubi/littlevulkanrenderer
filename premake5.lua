@@ -28,7 +28,7 @@ project "LVR"
 	
 	includedirs { "src",
 	 			"%{IncludeDir.includes}",
-
+				 "%{IncludeDir.VulkanSDK}"
 			}
 
 	removefiles { "src/platform/linux/**.h","src/platform/linux/**.cpp" }
@@ -86,10 +86,10 @@ project "LVR"
 		architecture "aarch64"
 		defines { "LVR_PLATFORM_MACOS"}
 		links {   "vulkan","glfw" }
-		outputdir = "%{cfg.buildcfg}-%{cfg.system}-%{cfg.architecture}"
-	
-		targetdir ("bin/" .. outputdir .. "/%{prj.name}")
-		objdir ("bin-int/" .. outputdir .. "/%{prj.name}")
+
+	outputdir = "%{cfg.buildcfg}-%{cfg.system}-%{cfg.architecture}"	
+	targetdir ("bin/" .. outputdir .. "/%{prj.name}")
+	objdir ("bin-int/" .. outputdir .. "/%{prj.name}")
 
 
 
