@@ -58,6 +58,7 @@ void Pipeline::createGraphicsPipeline(
 		static_cast<uint32_t>(bindingDescriptions.size());
 	vertexInputInfo.pVertexAttributeDescriptions = attributeDescriptions.data();
 	vertexInputInfo.pVertexBindingDescriptions = bindingDescriptions.data();
+
 	VkGraphicsPipelineCreateInfo pipelineInfo{};
 	pipelineInfo.sType = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO;
 	pipelineInfo.stageCount = shaders.size();

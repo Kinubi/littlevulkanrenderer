@@ -36,6 +36,8 @@ class SimpleRenderSystem {
 
 	std::unique_ptr<Pipeline> lvrPipeline;
 	VkPipelineLayout pipelineLayout{};
+
+	std::unique_ptr<DescriptorSetLayout> renderSystemLayout{};
 };
 
 }  // namespace lvr

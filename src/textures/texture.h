@@ -1,50 +1,63 @@
 #pragma once
 
-
-
-#include <cstdint>
-#include <string>
-#define STB_IMAGE_IMPLEMENTATION
-#include <stb_image.h>
-#include <vulkan/vulkan_core.h>
-
-#include <memory>
-
-#include "buffer.h"
 #include "device.h"
+
+// libs
+#include <vulkan/vulkan.h>
+
+// std
+#include <memory>
+#include <string>
+
 namespace lvr {
+class Texture {
+   public:
+	Texture(Device &device, const std::string &textureFilepath);
+	Texture(
+		Device &device,
+		VkFormat format,
+		VkExtent3D extent,
+		VkImageUsageFlags usage,
+		VkSampleCountFlagBits sampleCount);
+	~Texture();
 
-	class Texture {
-	public:
-		Texture(Device& device, const std::string& filePath);
-		~Texture();
+	// delete copy constructors
+	Texture(const Texture &) = delete;
+	Texture &operator=(const Texture &) = delete;
 
-		void createTextureImage();
-		void createTextureImageView(VkImageViewType viewType);
+	VkImageView imageView() const { return mTextureImageView; }
+	VkSampler sampler() const { return mTextureSampler; }
+	VkImage getImage() const { return mTextureImage; }
+	VkImageView getImageView() const { return mTextureImageView; }
+	VkDescriptorImageInfo getImageInfo() const { return mDescriptor; }
+	VkImageLayout getImageLayout() const { return mTextureLayout; }
+	VkExtent3D getExtent() const { return mExtent; }
+	VkFormat getFormat() const { return mFormat; }
 
-		void createTextureSampler();
+	void updateDescriptor();
+	void transitionLayout(
+		VkCommandBuffer commandBuffer, VkImageLayout oldLayout, VkImageLayout newLayout);
 
-		void createImage(
-			VkFormat format,
-			VkImageTiling tiling,
-			VkImageUsageFlags usage,
-			VkMemoryPropertyFlags properties);
+	static std::unique_ptr<Texture> createTextureFromFile(
+		Device &device, const std::string &filepath);
 
+   private:
+	void createTextureImage(const std::string &filepath);
+	void createTextureImageView(VkImageViewType viewType);
+	void createTextureSampler();
 
+	VkDescriptorImageInfo mDescriptor{};
 
-	private:
-		Device& device;
-		const std::string& filePath;
-		int32_t texWidth = 0, texHeight = 0, texChannels = 0;
-		stbi_uc* pixels;
-		VkDeviceSize imageSize;
+	Device &mDevice;
+	VkImage mTextureImage = nullptr;
+	VkDeviceMemory mTextureImageMemory = nullptr;
+	VkImageView mTextureImageView = nullptr;
+	VkSampler mTextureSampler = nullptr;
+	VkFormat mFormat;
+	VkImageLayout mTextureLayout;
+	uint32_t mMipLevels{1};
+	uint32_t mLayerCount{1};
+	VkExtent3D mExtent{};
+};
 
-		std::unique_ptr<Buffer> stagingBuffer;
-
-		VkImage textureImage;
-		VkDeviceMemory imageMemory;
-
-		VkImageView textureImageView;
-		VkSampler textureSampler;
-	};
-}  // namespace lvr
+}  // namespace

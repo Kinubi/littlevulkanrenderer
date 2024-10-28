@@ -22,43 +22,43 @@
 
 namespace lvr {
 
-	class Application {
-	public:
-		static constexpr uint32_t WIDTH = 1280;
-		static constexpr uint32_t HEIGHT = 720;
+class Application {
+   public:
+	static constexpr uint32_t WIDTH = 1280;
+	static constexpr uint32_t HEIGHT = 720;
 
-		Application();
-		~Application();
+	Application();
+	~Application();
 
-		Application(const Application&) = delete;
-		Application& operator=(const Application&) = delete;
+	Application(const Application&) = delete;
+	Application& operator=(const Application&) = delete;
 
-		void OnStart();
-		void OnUpdate(float dt);
+	void OnStart();
+	void OnUpdate(float dt);
 
-	private:
-		void loadGameObjects();
+   private:
+	void loadGameObjects();
 
-		Window lvrWIndow{ WIDTH, HEIGHT, "LVR" };
-		Device lvrDevice{ lvrWIndow };
-		Renderer lvrRenderer{ lvrWIndow, lvrDevice };
+	Window lvrWIndow{WIDTH, HEIGHT, "LVR"};
+	Device lvrDevice{lvrWIndow};
+	Renderer lvrRenderer{lvrWIndow, lvrDevice};
+	std::unique_ptr<SimpleRenderSystem> simpleRenderSystem;
+	std::unique_ptr<PointLightSystem> pointLightSystem;
 
-		std::unique_ptr<SimpleRenderSystem> simpleRenderSystem;
-		std::unique_ptr<PointLightSystem> pointLightSystem;
+	std::unique_ptr<DescriptorPool> globalPool{};
+	std::vector<std::unique_ptr<DescriptorPool>> framePools;
+	GameObjectManager gameObjectManager{lvrDevice};
+	Camera camera{};
 
-		std::unique_ptr<DescriptorPool> globalPool{};
-		std::vector<std::unique_ptr<DescriptorPool>> framePools;
-		GameObject::Map gameObjects;
-		Camera camera{};
+	GameObject& viewerObject = gameObjectManager.createGameObject();
 
-		GameObject viewerObject = GameObject::createGameObject();
-		KeyboardMovementController cameraController{};
+	KeyboardMovementController cameraController{};
 
-		std::vector<std::unique_ptr<Buffer>> uboBuffers =
-			std::vector<std::unique_ptr<Buffer>>(SwapChain::MAX_FRAMES_IN_FLIGHT);
+	std::vector<std::unique_ptr<Buffer>> uboBuffers =
+		std::vector<std::unique_ptr<Buffer>>(SwapChain::MAX_FRAMES_IN_FLIGHT);
 
-		std::vector<VkDescriptorSet> globalDescriptorSets =
-			std::vector<VkDescriptorSet>(SwapChain::MAX_FRAMES_IN_FLIGHT);
-	};
+	std::vector<VkDescriptorSet> globalDescriptorSets =
+		std::vector<VkDescriptorSet>(SwapChain::MAX_FRAMES_IN_FLIGHT);
+};
 
 }  // namespace lvr

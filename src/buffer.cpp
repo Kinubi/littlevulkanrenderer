@@ -172,7 +172,13 @@ void Buffer::writeToIndex(void *data, int index) {
  * @param index Used in offset calculation
  *
  */
-VkResult Buffer::flushIndex(int index) { return flush(alignmentSize, index * alignmentSize); }
+VkResult Buffer::flushIndex(int index) {
+	assert(
+		alignmentSize % lvrDevice.properties.limits.nonCoherentAtomSize == 0 &&
+		"Cannot use LveBuffer::flushIndex if alignmentSize isn't a multiple of Device Limits "
+		"nonCoherentAtomSize");
+	return flush(alignmentSize, index * alignmentSize);
+}
 
 /**
  * Create a buffer info descriptor
