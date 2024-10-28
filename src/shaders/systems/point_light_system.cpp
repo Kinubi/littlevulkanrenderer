@@ -26,7 +26,6 @@ PointLightSystem::PointLightSystem(
 	Device &device, VkRenderPass renderPass, VkDescriptorSetLayout globalSetLayout)
 	: lvrDevice(device) {
 	createPipelineLayout(globalSetLayout);
-
 	createPipeline(renderPass);
 }
 
@@ -59,10 +58,10 @@ void PointLightSystem::createPipeline(VkRenderPass renderPass) {
 	assert(pipelineLayout != nullptr && "Cannot create pipeline before pipeline layout");
 
 	PipelineConfigInfo pipelineConfig{};
-	Pipeline::defaultPipelineConfigInfo(pipelineConfig);
+	Pipeline::defaultPipelineConfigInfo(pipelineConfig, lvrDevice.getMsaaSamples());
 	Pipeline::enableAlphaBlending(pipelineConfig);
-	pipelineConfig.attributeDescriptions.clear();
-	pipelineConfig.bindingDescriptions.clear();
+	// pipelineConfig.attributeDescriptions.clear();
+	// pipelineConfig.bindingDescriptions.clear();
 	pipelineConfig.renderPass = renderPass;
 	pipelineConfig.pipelineLayout = pipelineLayout;
 	lvrPipeline = std::make_unique<Pipeline>(

@@ -10,7 +10,10 @@ namespace lvr {
 Renderer::Renderer(Window &window, Device &device) : lvrWindow{window}, lvrDevice{device} {
 	recreateSwapChain();
 	createCommandBuffers();
+<<<<<<< HEAD
 	createComputeCommandBuffers();
+=======
+>>>>>>> refs/remotes/origin/compute-shaders
 }
 
 Renderer::~Renderer() { freeCommandBuffers(); }
@@ -48,6 +51,7 @@ void Renderer::createCommandBuffers() {
 		VK_SUCCESS) {
 		throw std::runtime_error("failed to allocate command buffers!");
 	}
+<<<<<<< HEAD
 }
 
 void Renderer::createComputeCommandBuffers() {
@@ -63,6 +67,8 @@ void Renderer::createComputeCommandBuffers() {
 		VK_SUCCESS) {
 		throw std::runtime_error("failed to allocate compute command buffers!");
 	}
+=======
+>>>>>>> refs/remotes/origin/compute-shaders
 }
 
 void Renderer::freeCommandBuffers() {
@@ -72,6 +78,7 @@ void Renderer::freeCommandBuffers() {
 		static_cast<uint32_t>(commandBuffers.size()),
 		commandBuffers.data());
 	commandBuffers.clear();
+<<<<<<< HEAD
 
 	vkFreeCommandBuffers(
 		lvrDevice.device(),
@@ -79,6 +86,8 @@ void Renderer::freeCommandBuffers() {
 		static_cast<uint32_t>(computeCommandBuffers.size()),
 		computeCommandBuffers.data());
 	computeCommandBuffers.clear();
+=======
+>>>>>>> refs/remotes/origin/compute-shaders
 }
 
 VkCommandBuffer Renderer::beginFrame() {
@@ -140,9 +149,16 @@ void Renderer::beginSwapChainRenderPass(VkCommandBuffer commandBuffer) {
 	renderPassInfo.renderArea.offset = {0, 0};
 	renderPassInfo.renderArea.extent = lvrSwapChain->getSwapChainExtent();
 
+<<<<<<< HEAD
 	std::array<VkClearValue, 2> clearValues{};
 	clearValues[0].color = {0.01f, 0.01f, 0.01f, 1.0f};
 	clearValues[1].depthStencil = {1.0f, 0};
+=======
+	std::array<VkClearValue, 3> clearValues{};
+	clearValues[0].color = {0.0f, 0.0f, 0.0f, 1.0f};
+	clearValues[1].depthStencil = {1.0f, 0};
+	clearValues[2].color = {0.0f, 0.0f, 0.0f, 1.0f};
+>>>>>>> refs/remotes/origin/compute-shaders
 	renderPassInfo.clearValueCount = static_cast<uint32_t>(clearValues.size());
 	renderPassInfo.pClearValues = clearValues.data();
 
