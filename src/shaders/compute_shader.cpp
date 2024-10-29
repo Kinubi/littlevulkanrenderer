@@ -1,10 +1,13 @@
 #include "compute_shader.h"
 
+#include <iostream>
+
 namespace lvr {
 
 ComputeShader::ComputeShader(
 	Device& device, VkRenderPass renderPass, std::vector<std::string> filePaths)
 	: device(device), filePaths(filePaths) {
+	createComputeCommandBuffers();
 	createPipelineLayout();
 	createPipeline(renderPass);
 }
@@ -12,16 +15,17 @@ ComputeShader::ComputeShader(
 ComputeShader::~ComputeShader() { freeComputeCommandBuffers(); }
 
 void ComputeShader::dispatchComputeShader(
-	VkDescriptorSet& uniformDiscriptorSet, std::vector<Buffer> ubos, FrameInfo frameInfo) {
-	uint32_t frameIndex = getFrameIndex();
+	std::vector<std::unique_ptr<Buffer>>& ubos, FrameInfo frameInfo) {
+	uint32_t frameIndex = frameInfo.frameIndex;
 	VkCommandBuffer computeCommandBuffer = getCurrentComputeCommandBuffer();
 	computePipeline->bindCompute(computeCommandBuffer);
 
 	VkDescriptorSet computeDescriptorSet;
-	auto bufferInfoubo = ubos[frameIndex].descriptorInfo();
+	auto bufferInfoubo = ubos[frameIndex]->descriptorInfo();
 	auto bufferInfoLastFrame =
 		shaderStorageBuffers[(frameIndex - 1) % SwapChain::MAX_FRAMES_IN_FLIGHT]->descriptorInfo();
 	auto bufferInfoCurrentFrame = shaderStorageBuffers[frameIndex]->descriptorInfo();
+
 	DescriptorWriter(*computeShaderLayout, frameInfo.frameDescriptorPool)
 		.writeBuffer(0, &bufferInfoubo)
 		.writeBuffer(1, &bufferInfoLastFrame)
@@ -38,7 +42,7 @@ void ComputeShader::dispatchComputeShader(
 		0,
 		nullptr);
 
-	vkCmdDispatch(computeCommandBuffer, MAX_GROUPSX, 1, 1);
+	vkCmdDispatch(computeCommandBuffer, 256, 1, 1);
 }
 
 VkCommandBuffer ComputeShader::beginCompute() {
@@ -64,42 +68,7 @@ void ComputeShader::endCompute() {
 	}
 
 	isComputeDispatched = false;
-}
-
-template <typename T>
-void ComputeShader::createShaderStorageBuffers(const std::vector<T> computeBufferData) {
-	// Create a staging buffer used to upload data to the gpu
-	bufferCount = static_cast<uint32_t>(computeBufferData.size());
-	uint32_t bufferItemSize = sizeof(computeBufferData[0]);
-	VkDeviceSize bufferSize = bufferItemSize * bufferCount;
-
-	Buffer stagingBuffer{
-		device,
-		bufferItemSize,
-		bufferCount,
-		VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
-		VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
-	};
-
-	stagingBuffer.map();
-	stagingBuffer.writeToBuffer((void*)computeBufferData.data());
-
-	shaderStorageBuffers.resize(SwapChain::MAX_FRAMES_IN_FLIGHT);
-
-	// Copy initial particle data to all storage buffers
-	for (size_t i = 0; i < SwapChain::SwapChain::MAX_FRAMES_IN_FLIGHT; i++) {
-		shaderStorageBuffers[i] = std::make_unique<Buffer>(
-			device,
-			bufferItemSize,
-			bufferCount,
-			VK_BUFFER_USAGE_VERTEX_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT,
-			VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
-		;
-		device.copyBuffer(
-			stagingBuffer.getBuffer(),
-			shaderStorageBuffers[i]->getBuffer(),
-			bufferSize);
-	}
+	currentFrameIndex = (currentFrameIndex + 1) % SwapChain::MAX_FRAMES_IN_FLIGHT;
 }
 
 void ComputeShader::createPipelineLayout() {
@@ -117,7 +86,6 @@ void ComputeShader::createPipelineLayout() {
 	pipelineLayoutInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
 	pipelineLayoutInfo.setLayoutCount = static_cast<uint32_t>(descriptorSetLayouts.size());
 	pipelineLayoutInfo.pSetLayouts = descriptorSetLayouts.data();
-	pipelineLayoutInfo.pushConstantRangeCount = 1;
 
 	if (vkCreatePipelineLayout(
 			device.device(),

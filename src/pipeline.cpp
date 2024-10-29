@@ -3,7 +3,6 @@
 #include <vulkan/vulkan_core.h>
 
 #include <cassert>
-#include <cstddef>
 #include <cstdint>
 #include <cstring>
 #include <fstream>
@@ -21,7 +20,7 @@ Pipeline::Pipeline(
 	: device(device) {
 	createShaders(filePaths);
 	if (hasCompute) createComputePipeline(configInfo);
-	if (hasGraphics) createGraphicsPipeline(configInfo);
+	if (hasGraphics > 0) createGraphicsPipeline(configInfo);
 }
 
 Pipeline::~Pipeline() {
@@ -53,8 +52,8 @@ void Pipeline::createGraphicsPipeline(const PipelineConfigInfo &configInfo) {
 
 	VkGraphicsPipelineCreateInfo pipelineInfo{};
 	pipelineInfo.sType = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO;
-	pipelineInfo.stageCount = shaders.size();
-	pipelineInfo.pStages = createGraphicsInfos;
+	pipelineInfo.stageCount = static_cast<uint32_t>(createGraphicsInfos.size());
+	pipelineInfo.pStages = createGraphicsInfos.data();
 	pipelineInfo.pVertexInputState = &vertexInputInfo;
 	pipelineInfo.pInputAssemblyState = &configInfo.inputAssemblyInfo;
 	pipelineInfo.pViewportState = &configInfo.viewportInfo;
@@ -107,14 +106,13 @@ void Pipeline::createShaders(const std::vector<std::string> filePaths) {
 	for (int32_t i = 0; i < shaders.size(); i++) {
 		VkShaderStageFlagBits type = shaders[i]->getSource().shaderBitFlags;
 		if ((type == VK_SHADER_STAGE_VERTEX_BIT) || (type == VK_SHADER_STAGE_FRAGMENT_BIT)) {
-			createGraphicsInfos[i] = shaders[i]->getShaderInfo().shaderCreateInfo;
-			hasGraphics = true;
+			createGraphicsInfos.push_back(shaders[i]->getShaderInfo().shaderCreateInfo);
+			hasGraphics += 1;
 		}
 		if (type == VK_SHADER_STAGE_COMPUTE_BIT) {
 			createComputeInfo = shaders[i]->getShaderInfo().shaderCreateInfo;
 			hasCompute = true;
 		}
-		std::cout << createGraphicsInfos[i].stage << std::endl;
 	}
 }
 
@@ -123,7 +121,7 @@ void Pipeline::bind(VkCommandBuffer commandBuffer) {
 }
 
 void Pipeline::bindCompute(VkCommandBuffer computeCommandBuffer) {
-	vkCmdBindPipeline(computeCommandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, computePipeline);
+	vkCmdBindPipeline(computeCommandBuffer, VK_PIPELINE_BIND_POINT_COMPUTE, computePipeline);
 }
 
 void Pipeline::defaultPipelineConfigInfo(
@@ -198,8 +196,8 @@ void Pipeline::defaultPipelineConfigInfo(
 		static_cast<uint32_t>(configInfo.dynamicStateEnables.size());
 	configInfo.dynamicStateInfo.flags = 0;
 
-	configInfo.bindingDescriptions = Model::Vertex::getBindingDescriptions();
-	configInfo.attributeDescriptions = Model::Vertex::getAttributeDescriptions();
+	// configInfo.bindingDescriptions = Model::Vertex::getBindingDescriptions();
+	// configInfo.attributeDescriptions = Model::Vertex::getAttributeDescriptions();
 }
 
 void Pipeline::enableAlphaBlending(PipelineConfigInfo &configInfo) {

@@ -66,7 +66,8 @@ void SimpleRenderSystem::createPipeline(VkRenderPass renderPass) {
 
 	PipelineConfigInfo pipelineConfig{};
 	Pipeline::defaultPipelineConfigInfo(pipelineConfig, lvrDevice.getMsaaSamples());
-
+	pipelineConfig.bindingDescriptions = Model::Vertex::getBindingDescriptions();
+	pipelineConfig.attributeDescriptions = Model::Vertex::getAttributeDescriptions();
 	pipelineConfig.renderPass = renderPass;
 	pipelineConfig.pipelineLayout = pipelineLayout;
 	lvrPipeline = std::make_unique<Pipeline>(

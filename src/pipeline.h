@@ -58,13 +58,13 @@ class Pipeline {
 	void createShaders(const std::vector<std::string> filePaths);
 
 	Device &device;
-	VkPipeline graphicsPipeline;
-	VkPipeline computePipeline;
+	VkPipeline graphicsPipeline{};
+	VkPipeline computePipeline{};
 
 	bool hasCompute = false;
-	bool hasGraphics = false;
+	int32_t hasGraphics = 0;
 	std::vector<std::unique_ptr<Shader>> shaders{};
 	VkPipelineShaderStageCreateInfo createComputeInfo;
-	VkPipelineShaderStageCreateInfo createGraphicsInfos[];
+	std::vector<VkPipelineShaderStageCreateInfo> createGraphicsInfos;
 };
 }  // namespace lvr

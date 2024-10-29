@@ -42,6 +42,7 @@ Application::Application() {
 								.setMaxSets(1000)
 								.addPoolSize(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 1000)
 								.addPoolSize(VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 1000)
+								.addPoolSize(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, 1000)
 								.setPoolFlags(VK_DESCRIPTOR_POOL_CREATE_FREE_DESCRIPTOR_SET_BIT);
 	for (int i = 0; i < framePools.size(); i++) {
 		framePools[i] = framePoolBuilder.build();
@@ -85,6 +86,9 @@ void Application::OnStart() {
 		lvrDevice,
 		lvrRenderer.getSwapChainRenderPass(),
 		globalSetLayout->getDescriptorSetLayout());
+
+	particleSystem =
+		std::make_unique<ParticleSystem>(lvrDevice, lvrRenderer.getSwapChainRenderPass());
 
 	viewerObject.transform.translation.z = -2.5f;
 
@@ -132,6 +136,7 @@ void Application::OnUpdate(float dt) {
 		ubo.viewMatrix = camera.getView();
 		ubo.inverseViewMatrix = camera.getInverseView();
 		pointLightSystem->update(frameInfo, ubo);
+		particleSystem->updateUniformBuffers(frameInfo);
 
 		uboBuffers[frameIndex]->writeToBuffer(&ubo);
 		uboBuffers[frameIndex]->flush();
@@ -141,6 +146,8 @@ void Application::OnUpdate(float dt) {
 
 		simpleRenderSystem->renderGameObjects(frameInfo);
 		pointLightSystem->render(frameInfo);
+		particleSystem->renderParticles(frameInfo);
+		lvrRenderer.endCompute(particleSystem->getComputeCommandBuffer());
 		lvrRenderer.endSwapChainRenderPass(commandBuffer);
 		lvrRenderer.endFrame();
 	}

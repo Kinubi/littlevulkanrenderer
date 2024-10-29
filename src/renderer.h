@@ -25,6 +25,7 @@ class Renderer {
 	Renderer &operator=(const Renderer &) = delete;
 
 	VkRenderPass getSwapChainRenderPass() const { return lvrSwapChain->getRenderPass(); }
+
 	float getAspectRatio() const { return lvrSwapChain->extentAspectRatio(); }
 	bool isFrameInProgress() const { return isFrameStarted; }
 
@@ -40,6 +41,7 @@ class Renderer {
 
 	VkCommandBuffer beginFrame();
 	void endFrame();
+	void endCompute(VkCommandBuffer computeCommandBuffer);
 	void beginSwapChainRenderPass(VkCommandBuffer commandBuffer);
 	void endSwapChainRenderPass(VkCommandBuffer commandBuffer);
 

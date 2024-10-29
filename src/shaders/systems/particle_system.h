@@ -6,33 +6,27 @@
 #include "../compute_shader.h"
 
 namespace lvr {
-const uint32_t PARTICLE_COUNT = 2500;
+const uint32_t PARTICLE_COUNT = 8192;
 struct Particle {
 	glm::vec2 position;
 	glm::vec2 velocity;
 	glm::vec4 color;
 
-	static VkVertexInputBindingDescription getBindingDescription() {
-		VkVertexInputBindingDescription bindingDescription{};
-		bindingDescription.binding = 0;
-		bindingDescription.stride = sizeof(Particle);
-		bindingDescription.inputRate = VK_VERTEX_INPUT_RATE_VERTEX;
+	static std::vector<VkVertexInputBindingDescription> getBindingDescriptions() {
+		std::vector<VkVertexInputBindingDescription> bindingDescriptions(1);
+		bindingDescriptions[0].binding = 0;
+		bindingDescriptions[0].stride = sizeof(Particle);
+		bindingDescriptions[0].inputRate = VK_VERTEX_INPUT_RATE_VERTEX;
 
-		return bindingDescription;
+		return bindingDescriptions;
 	}
 
-	static std::array<VkVertexInputAttributeDescription, 2> getAttributeDescriptions() {
-		std::array<VkVertexInputAttributeDescription, 2> attributeDescriptions{};
-
-		attributeDescriptions[0].binding = 0;
-		attributeDescriptions[0].location = 0;
-		attributeDescriptions[0].format = VK_FORMAT_R32G32_SFLOAT;
-		attributeDescriptions[0].offset = offsetof(Particle, position);
-
-		attributeDescriptions[1].binding = 0;
-		attributeDescriptions[1].location = 1;
-		attributeDescriptions[1].format = VK_FORMAT_R32G32B32A32_SFLOAT;
-		attributeDescriptions[1].offset = offsetof(Particle, color);
+	static std::vector<VkVertexInputAttributeDescription> getAttributeDescriptions() {
+		std::vector<VkVertexInputAttributeDescription> attributeDescriptions{};
+		attributeDescriptions.push_back(
+			{0, 0, VK_FORMAT_R32G32_SFLOAT, offsetof(Particle, position)});
+		attributeDescriptions.push_back(
+			{1, 0, VK_FORMAT_R32G32B32A32_SFLOAT, offsetof(Particle, color)});
 
 		return attributeDescriptions;
 	}
@@ -45,27 +39,35 @@ struct UniformBufferObject {
 class ParticleSystem {
    public:
 	ParticleSystem(Device &device, VkRenderPass renderPass);
-	~ParticleSystem();
+	~ParticleSystem() {};
 
-	void renderParticles(FrameInfo &frameinfo);
+	void renderParticles(FrameInfo &frameInfo);
 
 	ParticleSystem(const ParticleSystem &) = delete;
 	ParticleSystem &operator=(const ParticleSystem &) = delete;
+
+	int32_t const getFrameIndex() const { return frameIndex; }
+
+	VkCommandBuffer getComputeCommandBuffer() const {
+		return computeShader->computeCommandBuffers[getFrameIndex()];
+	}
+
+	void updateUniformBuffers(FrameInfo &frameInfo);
 
    private:
 	Device &device;
 
 	void createPipelineLayout();
 	void createPipeline(VkRenderPass renderPass);
-	void createUniformDescriptorSet();
 	void createUniformBuffers();
-	void updateUniformBuffers();
+	void createParticles();
 
-	VkDescriptorSet &uniformDiscriptorSet;
 	std::unique_ptr<ComputeShader> computeShader;
 	std::vector<std::unique_ptr<Buffer>> uniformBuffers;
+	std::vector<Particle> particles = std::vector<Particle>(PARTICLE_COUNT);
 
 	std::unique_ptr<Pipeline> pipeline;
 	VkPipelineLayout pipelineLayout{};
+	int32_t frameIndex{0};
 };
 }  // namespace lvr
