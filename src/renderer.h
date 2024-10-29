@@ -45,7 +45,6 @@ class Renderer {
 
    private:
 	void createCommandBuffers();
-	void createComputeCommandBuffers();
 	void freeCommandBuffers();
 	void recreateSwapChain();
 
@@ -53,7 +52,6 @@ class Renderer {
 	Device &lvrDevice;
 	std::unique_ptr<SwapChain> lvrSwapChain;
 	std::vector<VkCommandBuffer> commandBuffers;
-	std::vector<VkCommandBuffer> computeCommandBuffers;
 
 	uint32_t currentImageIndex;
 	int32_t currentFrameIndex{0};

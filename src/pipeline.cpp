@@ -13,7 +13,6 @@
 #include <vector>
 
 #include "model.h"
-#include "shaders/shader.h"
 
 namespace lvr {
 
@@ -21,13 +20,13 @@ Pipeline::Pipeline(
 	Device &device, const std::vector<std::string> filePaths, const PipelineConfigInfo &configInfo)
 	: device(device) {
 	createShaders(filePaths);
-	createGraphicsPipeline(configInfo);
-	createComputePipeline(configInfo);
+	if (hasCompute) createComputePipeline(configInfo);
+	if (hasGraphics) createGraphicsPipeline(configInfo);
 }
 
 Pipeline::~Pipeline() {
-	vkDestroyPipeline(device.device(), graphicsPipeline, nullptr);
-	vkDestroyPipeline(device.device(), computePipeline, nullptr);
+	if (hasGraphics) vkDestroyPipeline(device.device(), graphicsPipeline, nullptr);
+	if (hasCompute) vkDestroyPipeline(device.device(), computePipeline, nullptr);
 }
 
 void Pipeline::createGraphicsPipeline(const PipelineConfigInfo &configInfo) {
@@ -84,21 +83,19 @@ void Pipeline::createGraphicsPipeline(const PipelineConfigInfo &configInfo) {
 }
 
 void Pipeline::createComputePipeline(const PipelineConfigInfo &configInfo) {
-	if (hasCompute) {
-		VkComputePipelineCreateInfo pipelineInfo{};
-		pipelineInfo.sType = VK_STRUCTURE_TYPE_COMPUTE_PIPELINE_CREATE_INFO;
-		pipelineInfo.layout = configInfo.pipelineLayout;
-		pipelineInfo.stage = createComputeInfo;
+	VkComputePipelineCreateInfo pipelineInfo{};
+	pipelineInfo.sType = VK_STRUCTURE_TYPE_COMPUTE_PIPELINE_CREATE_INFO;
+	pipelineInfo.layout = configInfo.pipelineLayout;
+	pipelineInfo.stage = createComputeInfo;
 
-		if (vkCreateComputePipelines(
-				device.device(),
-				VK_NULL_HANDLE,
-				1,
-				&pipelineInfo,
-				nullptr,
-				&computePipeline) != VK_SUCCESS) {
-			throw std::runtime_error("failed to create compute pipeline!");
-		}
+	if (vkCreateComputePipelines(
+			device.device(),
+			VK_NULL_HANDLE,
+			1,
+			&pipelineInfo,
+			nullptr,
+			&computePipeline) != VK_SUCCESS) {
+		throw std::runtime_error("failed to create compute pipeline!");
 	}
 }
 
@@ -111,6 +108,7 @@ void Pipeline::createShaders(const std::vector<std::string> filePaths) {
 		VkShaderStageFlagBits type = shaders[i]->getSource().shaderBitFlags;
 		if ((type == VK_SHADER_STAGE_VERTEX_BIT) || (type == VK_SHADER_STAGE_FRAGMENT_BIT)) {
 			createGraphicsInfos[i] = shaders[i]->getShaderInfo().shaderCreateInfo;
+			hasGraphics = true;
 		}
 		if (type == VK_SHADER_STAGE_COMPUTE_BIT) {
 			createComputeInfo = shaders[i]->getShaderInfo().shaderCreateInfo;
@@ -122,6 +120,10 @@ void Pipeline::createShaders(const std::vector<std::string> filePaths) {
 
 void Pipeline::bind(VkCommandBuffer commandBuffer) {
 	vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, graphicsPipeline);
+}
+
+void Pipeline::bindCompute(VkCommandBuffer computeCommandBuffer) {
+	vkCmdBindPipeline(computeCommandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, computePipeline);
 }
 
 void Pipeline::defaultPipelineConfigInfo(

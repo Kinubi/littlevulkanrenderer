@@ -10,7 +10,6 @@ namespace lvr {
 Renderer::Renderer(Window &window, Device &device) : lvrWindow{window}, lvrDevice{device} {
 	recreateSwapChain();
 	createCommandBuffers();
-	createComputeCommandBuffers();
 }
 
 Renderer::~Renderer() { freeCommandBuffers(); }
@@ -50,21 +49,6 @@ void Renderer::createCommandBuffers() {
 	}
 }
 
-void Renderer::createComputeCommandBuffers() {
-	computeCommandBuffers.resize(SwapChain::MAX_FRAMES_IN_FLIGHT);
-
-	VkCommandBufferAllocateInfo allocInfo{};
-	allocInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
-	allocInfo.commandPool = lvrDevice.getCommandPool();
-	allocInfo.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
-	allocInfo.commandBufferCount = static_cast<uint32_t>(computeCommandBuffers.size());
-
-	if (vkAllocateCommandBuffers(lvrDevice.device(), &allocInfo, computeCommandBuffers.data()) !=
-		VK_SUCCESS) {
-		throw std::runtime_error("failed to allocate compute command buffers!");
-	}
-}
-
 void Renderer::freeCommandBuffers() {
 	vkFreeCommandBuffers(
 		lvrDevice.device(),
@@ -72,13 +56,6 @@ void Renderer::freeCommandBuffers() {
 		static_cast<uint32_t>(commandBuffers.size()),
 		commandBuffers.data());
 	commandBuffers.clear();
-
-	vkFreeCommandBuffers(
-		lvrDevice.device(),
-		lvrDevice.getCommandPool(),
-		static_cast<uint32_t>(computeCommandBuffers.size()),
-		computeCommandBuffers.data());
-	computeCommandBuffers.clear();
 }
 
 VkCommandBuffer Renderer::beginFrame() {

@@ -31,6 +31,7 @@ struct PipelineConfigInfo {
 	VkRenderPass renderPass = nullptr;
 	uint32_t subpass = 0;
 };
+
 class Pipeline {
    public:
 	Pipeline(
@@ -44,6 +45,7 @@ class Pipeline {
 	Pipeline operator=(const Pipeline &) = delete;
 
 	void bind(VkCommandBuffer commandBuffer);
+	void bindCompute(VkCommandBuffer computeCommandBuffer);
 
 	static void defaultPipelineConfigInfo(
 		PipelineConfigInfo &configInfo, VkSampleCountFlagBits msaaSamples);
@@ -60,6 +62,7 @@ class Pipeline {
 	VkPipeline computePipeline;
 
 	bool hasCompute = false;
+	bool hasGraphics = false;
 	std::vector<std::unique_ptr<Shader>> shaders{};
 	VkPipelineShaderStageCreateInfo createComputeInfo;
 	VkPipelineShaderStageCreateInfo createGraphicsInfos[];
