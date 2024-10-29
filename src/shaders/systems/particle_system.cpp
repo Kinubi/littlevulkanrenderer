@@ -112,7 +112,7 @@ void ParticleSystem::createParticles() {
 		float theta = rndDist(rndEngine) * 2.0f * 3.14159265358979323846f;
 		float x = r * cos(theta) * 16.0f / 9.0f;
 		float y = r * sin(theta);
-		particle.position = glm::vec2(0.5f, 0.5f);
+		particle.position = glm::vec2(x, y);
 		particle.velocity = glm::normalize(glm::vec2(x, y)) * 0.25f;
 		particle.color =
 			glm::vec4(rndDist(rndEngine), rndDist(rndEngine), rndDist(rndEngine), 1.0f);

@@ -42,7 +42,7 @@ void ComputeShader::dispatchComputeShader(
 		0,
 		nullptr);
 
-	vkCmdDispatch(computeCommandBuffer, 256, 1, 1);
+	vkCmdDispatch(computeCommandBuffer, 32, 1, 1);
 }
 
 VkCommandBuffer ComputeShader::beginCompute() {

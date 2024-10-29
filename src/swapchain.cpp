@@ -489,8 +489,7 @@ void SwapChain::createSyncObjects() {
 				nullptr,
 				&renderFinishedSemaphores[i]) != VK_SUCCESS ||
 			vkCreateFence(device.device(), &fenceInfo, nullptr, &inFlightFences[i]) != VK_SUCCESS)
-			throw std::runtime_error(
-				"failed to create compute synchronization objects for a frame!");
+			throw std::runtime_error("failed to create synchronization objects for a frame!");
 		if (vkCreateSemaphore(
 				device.device(),
 				&semaphoreInfo,
