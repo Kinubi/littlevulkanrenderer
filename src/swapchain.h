@@ -41,7 +41,7 @@ class SwapChain {
 
 	VkResult acquireNextImage(uint32_t *imageIndex);
 	VkResult submitCommandBuffers(const VkCommandBuffer *buffers, uint32_t *imageIndex);
-	void submitComputeCommandBuffers(const VkCommandBuffer *buffers, uint32_t *imageIndex);
+	void submitComputeCommandBuffers(const VkCommandBuffer *buffers);
 
 	bool compareSwapFormats(const SwapChain &swapChain) const {
 		return swapChain.swapChainDepthFormat == swapChainDepthFormat &&

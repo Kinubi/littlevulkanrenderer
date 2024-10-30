@@ -46,6 +46,7 @@ class Device {
 	VkDevice device() { return Device_; }
 	VkSurfaceKHR surface() { return surface_; }
 	VkQueue graphicsQueue() { return graphicsQueue_; }
+	VkQueue computeQueue() { return computeQueue_; }
 	VkQueue presentQueue() { return presentQueue_; }
 
 	SwapChainSupportDetails getSwapChainSupport() { return querySwapChainSupport(physicalDevice); }

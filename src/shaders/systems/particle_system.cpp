@@ -17,6 +17,10 @@ ParticleSystem::ParticleSystem(Device& device, VkRenderPass renderPass) : device
 	computeShader->createShaderStorageBuffers<Particle>(particles);
 }
 
+ParticleSystem::~ParticleSystem() {
+	vkDestroyPipelineLayout(device.device(), pipelineLayout, nullptr);
+}
+
 void ParticleSystem::createPipelineLayout() {
 	VkPipelineLayoutCreateInfo pipelineLayoutInfo{};
 	pipelineLayoutInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;

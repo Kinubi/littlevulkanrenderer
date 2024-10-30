@@ -51,8 +51,11 @@ SwapChain::~SwapChain() {
 
 	for (int i = 0; i < depthImages.size(); i++) {
 		vkDestroyImageView(device.device(), depthImageViews[i], nullptr);
+		vkDestroyImageView(device.device(), colorImageViews[i], nullptr);
 		vkDestroyImage(device.device(), depthImages[i], nullptr);
+		vkDestroyImage(device.device(), colorImages[i], nullptr);
 		vkFreeMemory(device.device(), depthImageMemorys[i], nullptr);
+		vkFreeMemory(device.device(), colorImageMemorys[i], nullptr);
 	}
 
 	for (auto framebuffer : swapChainFramebuffers) {
@@ -65,7 +68,11 @@ SwapChain::~SwapChain() {
 	for (size_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++) {
 		vkDestroySemaphore(device.device(), renderFinishedSemaphores[i], nullptr);
 		vkDestroySemaphore(device.device(), imageAvailableSemaphores[i], nullptr);
-		vkDestroyFence(device.device(), inFlightFences[i], nullptr);
+		vkDestroySemaphore(device.device(), computeFinishedSemaphores[i], nullptr);
+		if (inFlightFences[i] != VK_NULL_HANDLE)
+			vkDestroyFence(device.device(), inFlightFences[i], nullptr);
+		if (computeInFlightFences[i] != VK_NULL_HANDLE)
+			vkDestroyFence(device.device(), computeInFlightFences[i], nullptr);
 	}
 }
 
@@ -140,16 +147,16 @@ VkResult SwapChain::submitCommandBuffers(const VkCommandBuffer* buffers, uint32_
 	return result;
 }
 
-void SwapChain::submitComputeCommandBuffers(const VkCommandBuffer* buffers, uint32_t* imageIndex) {
-	if (computeInFlightFences[*imageIndex] != VK_NULL_HANDLE) {
+void SwapChain::submitComputeCommandBuffers(const VkCommandBuffer* buffers) {
+	if (computeInFlightFences[currentFrame] != VK_NULL_HANDLE) {
 		vkWaitForFences(
 			device.device(),
 			1,
-			&computeInFlightFences[*imageIndex],
+			&computeInFlightFences[currentFrame],
 			VK_TRUE,
 			UINT64_MAX);
 	}
-	computeInFlightFences[*imageIndex] = computeInFlightFences[currentFrame];
+
 	vkResetFences(device.device(), 1, &computeInFlightFences[currentFrame]);
 	VkSubmitInfo submitInfo = {};
 	submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
@@ -161,11 +168,8 @@ void SwapChain::submitComputeCommandBuffers(const VkCommandBuffer* buffers, uint
 	submitInfo.signalSemaphoreCount = 1;
 	submitInfo.pSignalSemaphores = signalSemaphores;
 
-	if (vkQueueSubmit(
-			device.graphicsQueue(),
-			1,
-			&submitInfo,
-			computeInFlightFences[currentFrame]) != VK_SUCCESS) {
+	if (vkQueueSubmit(device.computeQueue(), 1, &submitInfo, computeInFlightFences[currentFrame]) !=
+		VK_SUCCESS) {
 		throw std::runtime_error("failed to submit draw command buffer!");
 	}
 }

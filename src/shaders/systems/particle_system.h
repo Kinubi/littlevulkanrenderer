@@ -39,7 +39,7 @@ struct UniformBufferObject {
 class ParticleSystem {
    public:
 	ParticleSystem(Device &device, VkRenderPass renderPass);
-	~ParticleSystem() {};
+	~ParticleSystem();
 
 	void renderParticles(FrameInfo &frameInfo);
 

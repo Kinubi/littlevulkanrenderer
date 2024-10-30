@@ -104,7 +104,7 @@ void Renderer::endFrame() {
 }
 
 void Renderer::endCompute(VkCommandBuffer computeCommandBuffer) {
-	lvrSwapChain->submitComputeCommandBuffers(&computeCommandBuffer, &currentImageIndex);
+	lvrSwapChain->submitComputeCommandBuffers(&computeCommandBuffer);
 }
 
 void Renderer::beginSwapChainRenderPass(VkCommandBuffer commandBuffer) {

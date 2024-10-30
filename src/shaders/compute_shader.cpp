@@ -12,7 +12,10 @@ ComputeShader::ComputeShader(
 	createPipeline(renderPass);
 }
 
-ComputeShader::~ComputeShader() { freeComputeCommandBuffers(); }
+ComputeShader::~ComputeShader() {
+	freeComputeCommandBuffers();
+	vkDestroyPipelineLayout(device.device(), computePipelineLayout, nullptr);
+}
 
 void ComputeShader::dispatchComputeShader(
 	std::vector<std::unique_ptr<Buffer>>& ubos, FrameInfo frameInfo) {
