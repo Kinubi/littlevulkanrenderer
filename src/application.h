@@ -10,9 +10,10 @@
 #include "gameobject.h"
 #include "keyboard_movement_controller.h"
 #include "renderer.h"
+#include "shaders/systems/particle_system.h"
+#include "shaders/systems/point_light_system.h"
+#include "shaders/systems/simplerendersystem.h"
 #include "swapchain.h"
-#include "systems/point_light_system.h"
-#include "systems/simplerendersystem.h"
 #include "window.h"
 
 // std
@@ -44,6 +45,7 @@ class Application {
 	Renderer lvrRenderer{lvrWIndow, lvrDevice};
 	std::unique_ptr<SimpleRenderSystem> simpleRenderSystem;
 	std::unique_ptr<PointLightSystem> pointLightSystem;
+	std::unique_ptr<ParticleSystem> particleSystem;
 
 	std::unique_ptr<DescriptorPool> globalPool{};
 	std::vector<std::unique_ptr<DescriptorPool>> framePools;

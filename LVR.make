@@ -65,12 +65,14 @@ OBJECTS :=
 GENERATED += $(OBJDIR)/application.o
 GENERATED += $(OBJDIR)/buffer.o
 GENERATED += $(OBJDIR)/camera.o
+GENERATED += $(OBJDIR)/compute_shader.o
 GENERATED += $(OBJDIR)/descriptors.o
 GENERATED += $(OBJDIR)/device.o
 GENERATED += $(OBJDIR)/gameobject.o
 GENERATED += $(OBJDIR)/keyboard_movement_controller.o
 GENERATED += $(OBJDIR)/main.o
 GENERATED += $(OBJDIR)/model.o
+GENERATED += $(OBJDIR)/particle_system.o
 GENERATED += $(OBJDIR)/pipeline.o
 GENERATED += $(OBJDIR)/point_light_system.o
 GENERATED += $(OBJDIR)/renderer.o
@@ -82,12 +84,14 @@ GENERATED += $(OBJDIR)/window.o
 OBJECTS += $(OBJDIR)/application.o
 OBJECTS += $(OBJDIR)/buffer.o
 OBJECTS += $(OBJDIR)/camera.o
+OBJECTS += $(OBJDIR)/compute_shader.o
 OBJECTS += $(OBJDIR)/descriptors.o
 OBJECTS += $(OBJDIR)/device.o
 OBJECTS += $(OBJDIR)/gameobject.o
 OBJECTS += $(OBJDIR)/keyboard_movement_controller.o
 OBJECTS += $(OBJDIR)/main.o
 OBJECTS += $(OBJDIR)/model.o
+OBJECTS += $(OBJDIR)/particle_system.o
 OBJECTS += $(OBJDIR)/pipeline.o
 OBJECTS += $(OBJDIR)/point_light_system.o
 OBJECTS += $(OBJDIR)/renderer.o
@@ -192,16 +196,22 @@ $(OBJDIR)/pipeline.o: src/pipeline.cpp
 $(OBJDIR)/renderer.o: src/renderer.cpp
 	@echo "$(notdir $<)"
 	$(SILENT) $(CXX) $(ALL_CXXFLAGS) $(FORCE_INCLUDE) -o "$@" -MF "$(@:%.o=%.d)" -c "$<"
+$(OBJDIR)/compute_shader.o: src/shaders/compute_shader.cpp
+	@echo "$(notdir $<)"
+	$(SILENT) $(CXX) $(ALL_CXXFLAGS) $(FORCE_INCLUDE) -o "$@" -MF "$(@:%.o=%.d)" -c "$<"
 $(OBJDIR)/shader.o: src/shaders/shader.cpp
 	@echo "$(notdir $<)"
 	$(SILENT) $(CXX) $(ALL_CXXFLAGS) $(FORCE_INCLUDE) -o "$@" -MF "$(@:%.o=%.d)" -c "$<"
+$(OBJDIR)/particle_system.o: src/shaders/systems/particle_system.cpp
+	@echo "$(notdir $<)"
+	$(SILENT) $(CXX) $(ALL_CXXFLAGS) $(FORCE_INCLUDE) -o "$@" -MF "$(@:%.o=%.d)" -c "$<"
+$(OBJDIR)/point_light_system.o: src/shaders/systems/point_light_system.cpp
+	@echo "$(notdir $<)"
+	$(SILENT) $(CXX) $(ALL_CXXFLAGS) $(FORCE_INCLUDE) -o "$@" -MF "$(@:%.o=%.d)" -c "$<"
+$(OBJDIR)/simplerendersystem.o: src/shaders/systems/simplerendersystem.cpp
+	@echo "$(notdir $<)"
+	$(SILENT) $(CXX) $(ALL_CXXFLAGS) $(FORCE_INCLUDE) -o "$@" -MF "$(@:%.o=%.d)" -c "$<"
 $(OBJDIR)/swapchain.o: src/swapchain.cpp
-	@echo "$(notdir $<)"
-	$(SILENT) $(CXX) $(ALL_CXXFLAGS) $(FORCE_INCLUDE) -o "$@" -MF "$(@:%.o=%.d)" -c "$<"
-$(OBJDIR)/point_light_system.o: src/systems/point_light_system.cpp
-	@echo "$(notdir $<)"
-	$(SILENT) $(CXX) $(ALL_CXXFLAGS) $(FORCE_INCLUDE) -o "$@" -MF "$(@:%.o=%.d)" -c "$<"
-$(OBJDIR)/simplerendersystem.o: src/systems/simplerendersystem.cpp
 	@echo "$(notdir $<)"
 	$(SILENT) $(CXX) $(ALL_CXXFLAGS) $(FORCE_INCLUDE) -o "$@" -MF "$(@:%.o=%.d)" -c "$<"
 $(OBJDIR)/texture.o: src/textures/texture.cpp

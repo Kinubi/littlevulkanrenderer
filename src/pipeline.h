@@ -31,6 +31,7 @@ struct PipelineConfigInfo {
 	VkRenderPass renderPass = nullptr;
 	uint32_t subpass = 0;
 };
+
 class Pipeline {
    public:
 	Pipeline(
@@ -44,21 +45,26 @@ class Pipeline {
 	Pipeline operator=(const Pipeline &) = delete;
 
 	void bind(VkCommandBuffer commandBuffer);
+	void bindCompute(VkCommandBuffer computeCommandBuffer);
 
 	static void defaultPipelineConfigInfo(
 		PipelineConfigInfo &configInfo, VkSampleCountFlagBits msaaSamples);
 	static void enableAlphaBlending(PipelineConfigInfo &configInfo);
 
    private:
-	void createGraphicsPipeline(
-		const std::vector<std::string> filePaths, const PipelineConfigInfo &configInfo);
+	void createGraphicsPipeline(const PipelineConfigInfo &configInfo);
+	void createComputePipeline(const PipelineConfigInfo &configInfo);
 
-	void createShaders(const std::string &fragFilepath, const std::string &vertFilepath);
+	void createShaders(const std::vector<std::string> filePaths);
 
 	Device &device;
-	VkPipeline graphicsPipeline;
+	VkPipeline graphicsPipeline{};
+	VkPipeline computePipeline{};
 
+	bool hasCompute = false;
+	int32_t hasGraphics = 0;
 	std::vector<std::unique_ptr<Shader>> shaders{};
-	VkPipelineShaderStageCreateInfo createInfos[];
+	VkPipelineShaderStageCreateInfo createComputeInfo;
+	std::vector<VkPipelineShaderStageCreateInfo> createGraphicsInfos;
 };
 }  // namespace lvr

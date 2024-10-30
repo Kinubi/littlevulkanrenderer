@@ -41,6 +41,7 @@ class SwapChain {
 
 	VkResult acquireNextImage(uint32_t *imageIndex);
 	VkResult submitCommandBuffers(const VkCommandBuffer *buffers, uint32_t *imageIndex);
+	void submitComputeCommandBuffers(const VkCommandBuffer *buffers);
 
 	bool compareSwapFormats(const SwapChain &swapChain) const {
 		return swapChain.swapChainDepthFormat == swapChainDepthFormat &&
@@ -88,8 +89,11 @@ class SwapChain {
 
 	std::vector<VkSemaphore> imageAvailableSemaphores;
 	std::vector<VkSemaphore> renderFinishedSemaphores;
+
+	std::vector<VkSemaphore> computeFinishedSemaphores;
 	std::vector<VkFence> inFlightFences;
 	std::vector<VkFence> imagesInFlight;
+	std::vector<VkFence> computeInFlightFences;
 	size_t currentFrame = 0;
 };
 

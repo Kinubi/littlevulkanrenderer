@@ -28,7 +28,6 @@ struct Source {
 	std::filesystem::path filePath;
 	std::vector<uint32_t> m_VulkanSPIRV;
 };
-
 class Shader {
    public:
 	Shader(Device& device, const std::string& filePath);

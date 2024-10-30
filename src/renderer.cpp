@@ -103,6 +103,10 @@ void Renderer::endFrame() {
 	currentFrameIndex = (currentFrameIndex + 1) % SwapChain::MAX_FRAMES_IN_FLIGHT;
 }
 
+void Renderer::endCompute(VkCommandBuffer computeCommandBuffer) {
+	lvrSwapChain->submitComputeCommandBuffers(&computeCommandBuffer);
+}
+
 void Renderer::beginSwapChainRenderPass(VkCommandBuffer commandBuffer) {
 	assert(isFrameStarted && "Can't call beginSwapChainRenderPass if frame is not in progress");
 	assert(

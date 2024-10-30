@@ -4,11 +4,11 @@
 
 #include <cstdint>
 
-#include "../camera.h"
-#include "../device.h"
-#include "../frameinfo.h"
-#include "../gameobject.h"
-#include "../pipeline.h"
+#include "camera.h"
+#include "device.h"
+#include "frameinfo.h"
+#include "gameobject.h"
+#include "pipeline.h"
 
 // std
 
@@ -17,16 +17,18 @@
 
 namespace lvr {
 
-class SimpleRenderSystem {
+class PointLightSystem {
    public:
-	SimpleRenderSystem(
+	PointLightSystem(
 		Device &device, VkRenderPass renderPass, VkDescriptorSetLayout globalSetLayout);
-	~SimpleRenderSystem();
+	~PointLightSystem();
 
-	SimpleRenderSystem(const SimpleRenderSystem &) = delete;
-	SimpleRenderSystem &operator=(const SimpleRenderSystem &) = delete;
+	PointLightSystem(const PointLightSystem &) = delete;
+	PointLightSystem &operator=(const PointLightSystem &) = delete;
 
-	void renderGameObjects(FrameInfo &frameinfo);
+	void update(FrameInfo &frameInfo, GlobalUbo &ubo);
+
+	void render(FrameInfo &frameinfo);
 
    private:
 	void createPipelineLayout(VkDescriptorSetLayout globalSetLayout);
@@ -36,8 +38,6 @@ class SimpleRenderSystem {
 
 	std::unique_ptr<Pipeline> lvrPipeline;
 	VkPipelineLayout pipelineLayout{};
-
-	std::unique_ptr<DescriptorSetLayout> renderSystemLayout{};
 };
 
 }  // namespace lvr
