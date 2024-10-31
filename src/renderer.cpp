@@ -23,7 +23,7 @@ void Renderer::recreateSwapChain() {
 	vkDeviceWaitIdle(lvrDevice.device());
 
 	if (lvrSwapChain == nullptr) {
-		lvrSwapChain = std::make_unique<SwapChain>(lvrDevice, extent);
+		lvrSwapChain = std::make_shared<SwapChain>(lvrDevice, extent);
 	} else {
 		std::shared_ptr<SwapChain> oldSwapChain = std::move(lvrSwapChain);
 		lvrSwapChain = std::make_unique<SwapChain>(lvrDevice, extent, oldSwapChain);
@@ -103,10 +103,6 @@ void Renderer::endFrame() {
 	currentFrameIndex = (currentFrameIndex + 1) % SwapChain::MAX_FRAMES_IN_FLIGHT;
 }
 
-void Renderer::endCompute(VkCommandBuffer computeCommandBuffer) {
-	lvrSwapChain->submitComputeCommandBuffers(&computeCommandBuffer);
-}
-
 void Renderer::beginSwapChainRenderPass(VkCommandBuffer commandBuffer) {
 	assert(isFrameStarted && "Can't call beginSwapChainRenderPass if frame is not in progress");
 	assert(
@@ -140,6 +136,10 @@ void Renderer::beginSwapChainRenderPass(VkCommandBuffer commandBuffer) {
 	VkRect2D scissor{{0, 0}, lvrSwapChain->getSwapChainExtent()};
 	vkCmdSetViewport(commandBuffer, 0, 1, &viewport);
 	vkCmdSetScissor(commandBuffer, 0, 1, &scissor);
+}
+
+void Renderer::submitComputeCommandBuffers(VkCommandBuffer commandBuffer) {
+	lvrSwapChain->submitComputeCommandBuffers(&commandBuffer);
 }
 
 void Renderer::endSwapChainRenderPass(VkCommandBuffer commandBuffer) {

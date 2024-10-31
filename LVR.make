@@ -66,6 +66,7 @@ GENERATED += $(OBJDIR)/application.o
 GENERATED += $(OBJDIR)/buffer.o
 GENERATED += $(OBJDIR)/camera.o
 GENERATED += $(OBJDIR)/compute_shader.o
+GENERATED += $(OBJDIR)/compute_shader_manager.o
 GENERATED += $(OBJDIR)/descriptors.o
 GENERATED += $(OBJDIR)/device.o
 GENERATED += $(OBJDIR)/gameobject.o
@@ -85,6 +86,7 @@ OBJECTS += $(OBJDIR)/application.o
 OBJECTS += $(OBJDIR)/buffer.o
 OBJECTS += $(OBJDIR)/camera.o
 OBJECTS += $(OBJDIR)/compute_shader.o
+OBJECTS += $(OBJDIR)/compute_shader_manager.o
 OBJECTS += $(OBJDIR)/descriptors.o
 OBJECTS += $(OBJDIR)/device.o
 OBJECTS += $(OBJDIR)/gameobject.o
@@ -197,6 +199,9 @@ $(OBJDIR)/renderer.o: src/renderer.cpp
 	@echo "$(notdir $<)"
 	$(SILENT) $(CXX) $(ALL_CXXFLAGS) $(FORCE_INCLUDE) -o "$@" -MF "$(@:%.o=%.d)" -c "$<"
 $(OBJDIR)/compute_shader.o: src/shaders/compute_shader.cpp
+	@echo "$(notdir $<)"
+	$(SILENT) $(CXX) $(ALL_CXXFLAGS) $(FORCE_INCLUDE) -o "$@" -MF "$(@:%.o=%.d)" -c "$<"
+$(OBJDIR)/compute_shader_manager.o: src/shaders/compute_shader_manager.cpp
 	@echo "$(notdir $<)"
 	$(SILENT) $(CXX) $(ALL_CXXFLAGS) $(FORCE_INCLUDE) -o "$@" -MF "$(@:%.o=%.d)" -c "$<"
 $(OBJDIR)/shader.o: src/shaders/shader.cpp

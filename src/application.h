@@ -10,6 +10,7 @@
 #include "gameobject.h"
 #include "keyboard_movement_controller.h"
 #include "renderer.h"
+#include "shaders/compute_shader_manager.h"
 #include "shaders/systems/particle_system.h"
 #include "shaders/systems/point_light_system.h"
 #include "shaders/systems/simplerendersystem.h"
@@ -43,6 +44,7 @@ class Application {
 	Window lvrWIndow{WIDTH, HEIGHT, "LVR"};
 	Device lvrDevice{lvrWIndow};
 	Renderer lvrRenderer{lvrWIndow, lvrDevice};
+	ComputeShaderManager computeShaderManager{lvrDevice};
 	std::unique_ptr<SimpleRenderSystem> simpleRenderSystem;
 	std::unique_ptr<PointLightSystem> pointLightSystem;
 	std::unique_ptr<ParticleSystem> particleSystem;

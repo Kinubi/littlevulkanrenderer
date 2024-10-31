@@ -67,10 +67,11 @@ void ParticleSystem::createUniformBuffers() {
 	}
 }
 
+void ParticleSystem::dispatchCompute(FrameInfo& frameInfo, VkCommandBuffer computeCommandBuffer) {
+	computeShader->dispatchComputeShader(uniformBuffers, frameInfo, computeCommandBuffer);
+}
+
 void ParticleSystem::renderParticles(FrameInfo& frameInfo) {
-	computeShader->beginCompute();
-	computeShader->dispatchComputeShader(uniformBuffers, frameInfo);
-	computeShader->endCompute();
 	frameIndex = frameInfo.frameIndex;
 	pipeline->bind(frameInfo.commandBuffer);
 
@@ -80,25 +81,6 @@ void ParticleSystem::renderParticles(FrameInfo& frameInfo) {
 	vkCmdBindVertexBuffers(frameInfo.commandBuffer, 0, 1, buffers, offsets);
 
 	vkCmdDraw(frameInfo.commandBuffer, PARTICLE_COUNT, 1, 0, 0);
-
-	// Purely for debuggging compute shader
-	// Buffer stagingBuffer{
-	// 	device,
-	// 	sizeof(particles[0]),
-	// 	particles.size(),
-	// 	VK_BUFFER_USAGE_TRANSFER_DST_BIT,
-	// 	VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
-	// };
-	// device.copyBuffer(
-	// 	computeShader->shaderStorageBuffers[frameIndex]->getBuffer(),
-	// 	stagingBuffer.getBuffer(),
-	// 	(VkDeviceSize)(particles.size() * sizeof(particles[0])));
-
-	// stagingBuffer.map();
-	// Particle particle;
-	// Particle* ssboBlockPointer = (Particle*)stagingBuffer.getMappedMemory();
-	// memcpy(&particle, ssboBlockPointer + 5, sizeof(Particle));
-	// // std::cout << particle.position.x << std::endl;
 }
 
 void ParticleSystem::updateUniformBuffers(FrameInfo& frameInfo) {
