@@ -24,7 +24,7 @@ Texture::Texture(
 	VkSampleCountFlagBits sampleCount)
 	: mDevice{device} {
 	VkImageAspectFlags aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
-	VkImageLayout imageLayout;
+	VkImageLayout imageLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
 
 	mFormat = format;
 	mExtent = extent;
@@ -75,6 +75,14 @@ Texture::Texture(
 		throw std::runtime_error("failed to create texture image view!");
 	}
 
+	mDevice.transitionImageLayout(
+		mTextureImage,
+		format,
+		VK_IMAGE_LAYOUT_UNDEFINED,
+		VK_IMAGE_LAYOUT_GENERAL,
+		1,
+		1);
+
 	// Sampler should be seperated out
 	if (usage & VK_IMAGE_USAGE_SAMPLED_BIT) {
 		// Create sampler to sample from the attachment in the fragment shader
@@ -96,13 +104,17 @@ Texture::Texture(
 			VK_SUCCESS) {
 			throw std::runtime_error("failed to create sampler!");
 		}
+		VkImageLayout samplerImageLayout;
+		if (imageLayout == VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL)
+			samplerImageLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
+		if (imageLayout == VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL)
+			samplerImageLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY_OPTIMAL;
+		if (imageLayout = VK_IMAGE_LAYOUT_GENERAL) samplerImageLayout = VK_IMAGE_LAYOUT_GENERAL;
 
-		VkImageLayout samplerImageLayout = imageLayout == VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL
-											   ? VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL
-											   : VK_IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY_OPTIMAL;
 		mDescriptor.sampler = mTextureSampler;
 		mDescriptor.imageView = mTextureImageView;
 		mDescriptor.imageLayout = samplerImageLayout;
+		mTextureLayout = samplerImageLayout;
 	}
 }
 
@@ -257,7 +269,7 @@ void Texture::createTextureSampler() {
 }
 
 void Texture::transitionLayout(
-	VkCommandBuffer commandBuffer, VkImageLayout oldLayout, VkImageLayout newLayout) {
+	VkCommandBuffer commandBuffer, VkImageLayout oldLayout, VkImageLayout newLayout, bool before) {
 	VkImageMemoryBarrier barrier{};
 	barrier.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
 	barrier.oldLayout = oldLayout;
@@ -328,6 +340,26 @@ void Texture::transitionLayout(
 
 		sourceStage = VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT;
 		destinationStage = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
+	} else if (
+		oldLayout == VK_IMAGE_LAYOUT_GENERAL && newLayout == VK_IMAGE_LAYOUT_GENERAL && before) {
+		// This says that any cmd that acts in color output or after (dstStage)
+		// that needs read or write access to a resource
+		// must wait until all previous read accesses in fragment shader
+		barrier.srcAccessMask = VK_ACCESS_NONE;
+		barrier.dstAccessMask = VK_ACCESS_SHADER_WRITE_BIT;
+
+		sourceStage = VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT;
+		destinationStage = VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT;
+	} else if (
+		oldLayout == VK_IMAGE_LAYOUT_GENERAL && newLayout == VK_IMAGE_LAYOUT_GENERAL && !before) {
+		// This says that any cmd that acts in color output or after (dstStage)
+		// that needs read or write access to a resource
+		// must wait until all previous read accesses in fragment shader
+		barrier.srcAccessMask = VK_ACCESS_SHADER_WRITE_BIT;
+		barrier.dstAccessMask = 0;
+
+		sourceStage = VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT;
+		destinationStage = VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT;
 	} else {
 		throw std::invalid_argument("unsupported layout transition!");
 	}
@@ -342,5 +374,7 @@ void Texture::transitionLayout(
 		nullptr,
 		1,
 		&barrier);
+
+	mDescriptor.imageLayout = newLayout;
 }
 }  // namespace lvr

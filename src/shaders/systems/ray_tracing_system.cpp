@@ -24,11 +24,21 @@ RayTracingSystem::~RayTracingSystem() {
 }
 
 void RayTracingSystem::dispatchCompute(FrameInfo& frameInfo, VkCommandBuffer computeCommandBuffer) {
+	image->transitionLayout(
+		computeCommandBuffer,
+		VK_IMAGE_LAYOUT_GENERAL,
+		VK_IMAGE_LAYOUT_GENERAL,
+		true);
 	computeShader->dispatchComputeShader(
 		uniformBuffers,
 		frameInfo,
 		computeCommandBuffer,
 		image->getImageInfo());
+	image->transitionLayout(
+		computeCommandBuffer,
+		VK_IMAGE_LAYOUT_GENERAL,
+		VK_IMAGE_LAYOUT_GENERAL,
+		false);
 }
 
 void RayTracingSystem::renderRays(FrameInfo& frameInfo) {
@@ -36,6 +46,7 @@ void RayTracingSystem::renderRays(FrameInfo& frameInfo) {
 	pipeline->bind(frameInfo.commandBuffer);
 
 	VkDescriptorSet raytracingDescriptorSet;
+
 	auto imageInfo = image->getImageInfo();
 
 	DescriptorWriter(*raytracingSystemLayout, frameInfo.frameDescriptorPool)
@@ -46,20 +57,21 @@ void RayTracingSystem::renderRays(FrameInfo& frameInfo) {
 		frameInfo.commandBuffer,
 		VK_PIPELINE_BIND_POINT_GRAPHICS,
 		pipelineLayout,
-		1,	// starting set (0 is the globalDescriptorSet, 1 is the set specific to this	//
+		0,	// starting set (0 is the globalDescriptorSet, 1 is the set specific to this	//
 			// system)
 		1,	// set count
 		&raytracingDescriptorSet,
 		0,
 		nullptr);
 
-	vkCmdDraw(frameInfo.commandBuffer, 4, 1, 0, 0);
+	vkCmdDraw(frameInfo.commandBuffer, 6, 1, 0, 0);
 }
 
 void RayTracingSystem::updateUniformBuffers(FrameInfo& frameInfo) {
 	UniformBufferObject ubo{};
 	ubo.viewMatrix = frameInfo.camera.getView();
 	ubo.inverseViewMatrix = frameInfo.camera.getInverseView();
+	ubo.inverseProjectionMatrix = glm::inverse(frameInfo.camera.getProjection());
 
 	uniformBuffers[frameInfo.frameIndex]->writeToBuffer(&ubo);
 }
@@ -67,7 +79,7 @@ void RayTracingSystem::updateUniformBuffers(FrameInfo& frameInfo) {
 void RayTracingSystem::createPipelineLayout() {
 	raytracingSystemLayout =
 		DescriptorSetLayout::Builder(device)
-			.addBinding(0, VK_DESCRIPTOR_TYPE_STORAGE_IMAGE, VK_SHADER_STAGE_FRAGMENT_BIT)
+			.addBinding(0, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, VK_SHADER_STAGE_FRAGMENT_BIT)
 			.build();
 
 	std::vector<VkDescriptorSetLayout> descriptorSetLayouts{
@@ -122,7 +134,7 @@ void RayTracingSystem::createSpheres() {
 			static_cast<float>(rand()) / static_cast<float>(RAND_MAX),
 			static_cast<float>(rand()) / static_cast<float>(RAND_MAX),
 			static_cast<float>(rand()) / static_cast<float>(RAND_MAX));
-		sphere.radius = 2.0f;  // Example radius
+		sphere.radius = 0.5f;  // Example radius
 		sphere.color = glm::vec3(
 			static_cast<float>(rand()) / static_cast<float>(RAND_MAX),
 			static_cast<float>(rand()) / static_cast<float>(RAND_MAX),

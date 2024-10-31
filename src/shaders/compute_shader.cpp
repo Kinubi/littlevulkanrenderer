@@ -57,13 +57,13 @@ void ComputeShader::dispatchComputeShader(
 		computeCommandBuffer,
 		VK_PIPELINE_BIND_POINT_COMPUTE,
 		computePipelineLayout,
-		0,
+		1,
 		1,
 		&computeDescriptorSet,
 		0,
 		nullptr);
 
-	vkCmdDispatch(computeCommandBuffer, 32, 1, 1);
+	vkCmdDispatch(computeCommandBuffer, 1280 / 16, 720 / 16, 1);
 }
 
 void ComputeShader::createPipelineLayout() {

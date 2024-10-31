@@ -12,7 +12,7 @@
 #include "pipeline.h"
 
 namespace lvr {
-const int32_t SPHERE_COUNT = 3;
+const int32_t SPHERE_COUNT = 4;
 struct Sphere {
 	glm::vec3 center;
 	float radius;
@@ -23,6 +23,8 @@ class RayTracingSystem {
 	struct UniformBufferObject {
 		glm::mat4 viewMatrix{1.0f};
 		glm::mat4 inverseViewMatrix{1.0f};
+		glm::mat4 inverseProjectionMatrix{1.0f};
+		int32_t sphereCount{SPHERE_COUNT};
 	};
 
    public:

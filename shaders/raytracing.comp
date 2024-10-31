@@ -1,10 +1,10 @@
 #version 450
 
-layout(local_size_x = 16, local_size_y = 16) in;
 
 layout(set = 1, binding = 0) uniform UniformBufferObject {
 	mat4 viewMatrix;
 	mat4 inverseViewMatrix;
+    mat4 inverseProjectionMatrix;
     int sphereCount;
 };
 
@@ -29,6 +29,8 @@ struct Ray {
     vec3 direction;
 };
 
+layout (local_size_x = 16, local_size_y = 16, local_size_z = 1) in;
+
 
 bool intersectSphere(Ray ray, Sphere sphere, out float t) {
     vec3 oc = ray.origin - sphere.center;
@@ -47,19 +49,31 @@ bool intersectSphere(Ray ray, Sphere sphere, out float t) {
 void main() {
     ivec2 pixelCoord = ivec2(gl_GlobalInvocationID.xy);
     vec2 resolution = vec2(imageSize(imgOutput));
-    vec2 fragCoord = vec2(pixelCoord);
+
 
     Ray ray;
-    ray.origin = inverseViewMatrix[3].xyz;
-    ray.direction = viewMatrix[3].xyz;
+    ray.origin = viewMatrix[3].xyz;
+    vec2 uv = (pixelCoord / resolution) * 2.0 - 1.0;
+//    uv.y = -uv.y;
+    //vec3 cameraRightWorld = vec3(viewMatrix[0][0], viewMatrix[1][0], viewMatrix[2][0]);
+    //vec3 cameraUpWorld = vec3(viewMatrix[0][1], viewMatrix[1][1], viewMatrix[2][1]);
+    vec3 pointNDS = vec3(uv, -1.0);
+    vec4 pointNDSH = vec4(pointNDS, 1.0);
+    vec4 dirEye = inverseProjectionMatrix * pointNDSH;
+    dirEye.w = 0.;
+    //ray.direction = normalize(vec3(pixelCoord.x - resolution.x/2, resolution.y/2 - pixelCoord.y, -(resolution.y/2) / tan(0.5 * radians(45.0))));
+    ray.direction = normalize((inverseViewMatrix * dirEye).xyz);
+
+
+    vec4 color = vec4(0.0);
 
     float t;
-    vec4 color = vec4(0.0);
-    for (int i; i < sphereCount; i++) {
+    for (int i = 0; i < sphereCount; i++) {
         if (intersectSphere(ray, spheresIn[i], t)) {
             color = vec4(spheresIn[i].color, 1.0); 
         }
     }
+
 
     imageStore(imgOutput, pixelCoord, color);
 }

@@ -159,14 +159,15 @@ void Application::OnUpdate(float dt) {
 
 			lvrRenderer.beginSwapChainRenderPass(commandBuffer);
 
-			simpleRenderSystem->renderGameObjects(frameInfo);
-			pointLightSystem->render(frameInfo);
 			// particleSystem->dispatchCompute(frameInfo, computeCommandBuffer);
 			raytracingSystem->dispatchCompute(frameInfo, computeCommandBuffer);
 			computeCommandBuffer = computeShaderManager.endCompute();
 			lvrRenderer.submitComputeCommandBuffers(computeCommandBuffer);
 			// particleSystem->renderParticles(frameInfo);
 			raytracingSystem->renderRays(frameInfo);
+
+			simpleRenderSystem->renderGameObjects(frameInfo);
+			pointLightSystem->render(frameInfo);
 			lvrRenderer.endSwapChainRenderPass(commandBuffer);
 			lvrRenderer.endFrame();
 		}
