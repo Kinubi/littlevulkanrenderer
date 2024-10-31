@@ -25,6 +25,7 @@ class Renderer {
 	Renderer &operator=(const Renderer &) = delete;
 
 	VkRenderPass getSwapChainRenderPass() const { return lvrSwapChain->getRenderPass(); }
+	std::shared_ptr<SwapChain> getSwapChain() { return lvrSwapChain; }
 
 	float getAspectRatio() const { return lvrSwapChain->extentAspectRatio(); }
 	bool isFrameInProgress() const { return isFrameStarted; }
@@ -41,8 +42,9 @@ class Renderer {
 
 	VkCommandBuffer beginFrame();
 	void endFrame();
-	void endCompute(VkCommandBuffer computeCommandBuffer);
+
 	void beginSwapChainRenderPass(VkCommandBuffer commandBuffer);
+	void submitComputeCommandBuffers(VkCommandBuffer commandBuffer);
 	void endSwapChainRenderPass(VkCommandBuffer commandBuffer);
 
    private:
@@ -52,7 +54,7 @@ class Renderer {
 
 	Window &lvrWindow;
 	Device &lvrDevice;
-	std::unique_ptr<SwapChain> lvrSwapChain;
+	std::shared_ptr<SwapChain> lvrSwapChain;
 	std::vector<VkCommandBuffer> commandBuffers;
 
 	uint32_t currentImageIndex;

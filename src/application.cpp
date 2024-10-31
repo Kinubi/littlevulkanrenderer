@@ -117,39 +117,44 @@ void Application::OnUpdate(float dt) {
 	camera.setPerspectiveProjection(glm::radians(50.0f), aspect, 0.1f, 10.0f);
 
 	if (auto commandBuffer = lvrRenderer.beginFrame()) {
-		int32_t frameIndex = lvrRenderer.getFrameIndex();
-		framePools[frameIndex]->resetPool();
+		if (auto computeCommandBuffer = computeShaderManager.beginCompute()) {
+			int32_t frameIndex = lvrRenderer.getFrameIndex();
+			framePools[frameIndex]->resetPool();
 
-		FrameInfo frameInfo{
-			frameIndex,
-			dt,
-			commandBuffer,
-			camera,
-			globalDescriptorSets[frameIndex],
-			*framePools[frameIndex],
-			gameObjectManager.gameObjects};
+			FrameInfo frameInfo{
+				frameIndex,
+				dt,
+				commandBuffer,
+				camera,
+				globalDescriptorSets[frameIndex],
+				*framePools[frameIndex],
+				gameObjectManager.gameObjects};
 
-		// update
+			// update
 
-		GlobalUbo ubo{};
-		ubo.projectionMatrix = camera.getProjection();
-		ubo.viewMatrix = camera.getView();
-		ubo.inverseViewMatrix = camera.getInverseView();
-		pointLightSystem->update(frameInfo, ubo);
-		particleSystem->updateUniformBuffers(frameInfo);
+			GlobalUbo ubo{};
 
-		uboBuffers[frameIndex]->writeToBuffer(&ubo);
-		uboBuffers[frameIndex]->flush();
-		gameObjectManager.updateBuffer(frameIndex);
+			ubo.projectionMatrix = camera.getProjection();
+			ubo.viewMatrix = camera.getView();
+			ubo.inverseViewMatrix = camera.getInverseView();
+			pointLightSystem->update(frameInfo, ubo);
+			particleSystem->updateUniformBuffers(frameInfo);
 
-		lvrRenderer.beginSwapChainRenderPass(commandBuffer);
+			uboBuffers[frameIndex]->writeToBuffer(&ubo);
+			uboBuffers[frameIndex]->flush();
+			gameObjectManager.updateBuffer(frameIndex);
 
-		simpleRenderSystem->renderGameObjects(frameInfo);
-		pointLightSystem->render(frameInfo);
-		particleSystem->renderParticles(frameInfo);
-		lvrRenderer.endCompute(particleSystem->getComputeCommandBuffer());
-		lvrRenderer.endSwapChainRenderPass(commandBuffer);
-		lvrRenderer.endFrame();
+			lvrRenderer.beginSwapChainRenderPass(commandBuffer);
+
+			simpleRenderSystem->renderGameObjects(frameInfo);
+			pointLightSystem->render(frameInfo);
+			particleSystem->dispatchCompute(frameInfo, computeCommandBuffer);
+			computeCommandBuffer = computeShaderManager.endCompute();
+			lvrRenderer.submitComputeCommandBuffers(computeCommandBuffer);
+			particleSystem->renderParticles(frameInfo);
+			lvrRenderer.endSwapChainRenderPass(commandBuffer);
+			lvrRenderer.endFrame();
+		}
 	}
 }
 

@@ -41,16 +41,13 @@ class ParticleSystem {
 	ParticleSystem(Device &device, VkRenderPass renderPass);
 	~ParticleSystem();
 
+	void dispatchCompute(FrameInfo &frameInfo, VkCommandBuffer computeCommandBuffer);
 	void renderParticles(FrameInfo &frameInfo);
 
 	ParticleSystem(const ParticleSystem &) = delete;
 	ParticleSystem &operator=(const ParticleSystem &) = delete;
 
 	int32_t const getFrameIndex() const { return frameIndex; }
-
-	VkCommandBuffer getComputeCommandBuffer() const {
-		return computeShader->computeCommandBuffers[getFrameIndex()];
-	}
 
 	void updateUniformBuffers(FrameInfo &frameInfo);
 

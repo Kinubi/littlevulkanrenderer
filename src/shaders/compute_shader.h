@@ -12,36 +12,28 @@ namespace lvr {
 
 class ComputeShader {
    public:
-	const uint32_t MAX_GROUPSX = 1024;
+	const uint32_t MAX_GROUPS_X = 32;
 	ComputeShader(Device &device, VkRenderPass renderPass, std::vector<std::string> filePaths);
 	~ComputeShader();
 
 	ComputeShader(const ComputeShader &) = delete;
 	ComputeShader &operator=(const ComputeShader &) = delete;
 
-	void dispatchComputeShader(std::vector<std::unique_ptr<Buffer>> &ubos, FrameInfo frameInfo);
-	VkCommandBuffer beginCompute();
-	void endCompute();
-	VkCommandBuffer getCurrentComputeCommandBuffer() const {
-		assert(isComputeDispatched && "Cannot get command buffer when frame not in progress!");
-		return computeCommandBuffers[currentFrameIndex];
-	}
-	int32_t getFrameIndex() const {
-		assert(isComputeDispatched && "Cannot get frame index when frame is not in progress");
-		return currentFrameIndex;
-	}
+	void dispatchComputeShader(
+		std::vector<std::unique_ptr<Buffer>> &ubos,
+		FrameInfo frameInfo,
+		VkCommandBuffer computeCommandBuffer);
 
 	std::vector<std::unique_ptr<Buffer>> shaderStorageBuffers;
-	std::vector<VkCommandBuffer> computeCommandBuffers;
 
 	template <typename T>
 	void createShaderStorageBuffers(const std::vector<T> computeBufferData);
+	template <typename T>
+	std::vector<T> getShaderStorageBuffers();
 
    private:
 	void createPipelineLayout();
 	void createPipeline(VkRenderPass renderPass);
-	void createComputeCommandBuffers();
-	void freeComputeCommandBuffers();
 
 	Device &device;
 
@@ -92,5 +84,28 @@ void ComputeShader::createShaderStorageBuffers(const std::vector<T> computeBuffe
 			shaderStorageBuffers[i]->getBuffer(),
 			bufferSize);
 	}
+}
+
+template <typename T>
+std::vector<T> ComputeShader::getShaderStorageBuffers() {
+	// Purely for debuggging compute shader
+	Buffer stagingBuffer{
+		device,
+		sizeof(T),
+		bufferCount,
+		VK_BUFFER_USAGE_TRANSFER_DST_BIT,
+		VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
+	};
+	device.copyBuffer(
+		shaderStorageBuffers[currentFrameIndex]->getBuffer(),
+		stagingBuffer.getBuffer(),
+		(VkDeviceSize)(bufferCount * sizeof(T)));
+
+	stagingBuffer.map();
+	std::vector<T> bufferData;
+	bufferData.reserve(bufferCount * sizeof(T));
+	std::vector<T> *ssboBlockPointer = (std::vector<T> *)stagingBuffer.getMappedMemory();
+	memcpy(&bufferData, ssboBlockPointer, sizeof(bufferData));
+	// std::cout << particle.position.x << std::endl;
 }
 }  // namespace lvr
