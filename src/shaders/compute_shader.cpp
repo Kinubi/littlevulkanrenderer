@@ -5,8 +5,11 @@
 namespace lvr {
 
 ComputeShader::ComputeShader(
-	Device& device, VkRenderPass renderPass, std::vector<std::string> filePaths)
-	: device(device), filePaths(filePaths) {
+	Device& device,
+	VkRenderPass renderPass,
+	std::vector<std::string> filePaths,
+	std::unique_ptr<DescriptorSetLayout> externalSetLayout)
+	: device(device), filePaths(filePaths), externalSetLayout(std::move(externalSetLayout)) {
 	createPipelineLayout();
 	createPipeline(renderPass);
 }
@@ -18,10 +21,25 @@ ComputeShader::~ComputeShader() {
 void ComputeShader::dispatchComputeShader(
 	std::vector<std::unique_ptr<Buffer>>& ubos,
 	FrameInfo frameInfo,
-	VkCommandBuffer computeCommandBuffer) {
+	VkCommandBuffer computeCommandBuffer,
+	VkDescriptorImageInfo imageInfo) {
 	uint32_t frameIndex = frameInfo.frameIndex;
-
 	computePipeline->bindCompute(computeCommandBuffer);
+
+	VkDescriptorSet computeDescriptorSetImage;
+	DescriptorWriter(*externalSetLayout, frameInfo.frameDescriptorPool)
+		.writeImage(0, &imageInfo)
+		.build(computeDescriptorSetImage);
+
+	vkCmdBindDescriptorSets(
+		computeCommandBuffer,
+		VK_PIPELINE_BIND_POINT_COMPUTE,
+		computePipelineLayout,
+		0,
+		1,
+		&computeDescriptorSetImage,
+		0,
+		nullptr);
 
 	VkDescriptorSet computeDescriptorSet;
 	auto bufferInfoubo = ubos[frameIndex]->descriptorInfo();
@@ -57,6 +75,7 @@ void ComputeShader::createPipelineLayout() {
 			.build();
 
 	std::vector<VkDescriptorSetLayout> descriptorSetLayouts{
+		externalSetLayout->getDescriptorSetLayout(),
 		computeShaderLayout->getDescriptorSetLayout()};
 
 	VkPipelineLayoutCreateInfo pipelineLayoutInfo{};

@@ -13,7 +13,11 @@ namespace lvr {
 class ComputeShader {
    public:
 	const uint32_t MAX_GROUPS_X = 32;
-	ComputeShader(Device &device, VkRenderPass renderPass, std::vector<std::string> filePaths);
+	ComputeShader(
+		Device &device,
+		VkRenderPass renderPass,
+		std::vector<std::string> filePaths,
+		std::unique_ptr<DescriptorSetLayout> externalSetLayout);
 	~ComputeShader();
 
 	ComputeShader(const ComputeShader &) = delete;
@@ -22,7 +26,8 @@ class ComputeShader {
 	void dispatchComputeShader(
 		std::vector<std::unique_ptr<Buffer>> &ubos,
 		FrameInfo frameInfo,
-		VkCommandBuffer computeCommandBuffer);
+		VkCommandBuffer computeCommandBuffer,
+		VkDescriptorImageInfo imageInfo);
 
 	std::vector<std::unique_ptr<Buffer>> shaderStorageBuffers;
 
@@ -47,6 +52,7 @@ class ComputeShader {
 
 	int32_t currentFrameIndex{0};
 	std::unique_ptr<DescriptorSetLayout> computeShaderLayout{};
+	std::unique_ptr<DescriptorSetLayout> externalSetLayout{};
 };
 
 template <typename T>

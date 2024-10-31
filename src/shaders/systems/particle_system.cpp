@@ -9,7 +9,8 @@ ParticleSystem::ParticleSystem(Device& device, VkRenderPass renderPass) : device
 	computeShader = std::make_unique<ComputeShader>(
 		device,
 		renderPass,
-		std::vector<std::string>{"shaders/particles.comp"});
+		std::vector<std::string>{"shaders/particles.comp"},
+		DescriptorSetLayout::Builder(device).build());
 	createPipelineLayout();
 	createPipeline(renderPass);
 	createParticles();
@@ -38,9 +39,9 @@ void ParticleSystem::createPipeline(VkRenderPass renderPass) {
 
 	PipelineConfigInfo pipelineConfig{};
 	Pipeline::defaultPipelineConfigInfo(pipelineConfig, device.getMsaaSamples());
-	pipelineConfig.inputAssemblyInfo.topology = VK_PRIMITIVE_TOPOLOGY_POINT_LIST;
 	pipelineConfig.attributeDescriptions = Particle::getAttributeDescriptions();
 	pipelineConfig.bindingDescriptions = Particle::getBindingDescriptions();
+	pipelineConfig.inputAssemblyInfo.topology = VK_PRIMITIVE_TOPOLOGY_POINT_LIST;
 	pipelineConfig.renderPass = renderPass;
 	pipelineConfig.pipelineLayout = pipelineLayout;
 	pipeline = std::make_unique<Pipeline>(
@@ -68,7 +69,11 @@ void ParticleSystem::createUniformBuffers() {
 }
 
 void ParticleSystem::dispatchCompute(FrameInfo& frameInfo, VkCommandBuffer computeCommandBuffer) {
-	computeShader->dispatchComputeShader(uniformBuffers, frameInfo, computeCommandBuffer);
+	computeShader->dispatchComputeShader(
+		uniformBuffers,
+		frameInfo,
+		computeCommandBuffer,
+		VkDescriptorImageInfo{});
 }
 
 void ParticleSystem::renderParticles(FrameInfo& frameInfo) {

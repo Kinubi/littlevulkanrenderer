@@ -1,0 +1,65 @@
+#version 450
+
+layout(local_size_x = 16, local_size_y = 16) in;
+
+layout(set = 1, binding = 0) uniform UniformBufferObject {
+	mat4 viewMatrix;
+	mat4 inverseViewMatrix;
+    int sphereCount;
+};
+
+struct Sphere {
+    vec3 center;
+    float radius;
+    vec3 color;
+};
+
+layout(set=1, binding = 1) readonly buffer SpheresSSBOIn {
+   Sphere spheresIn[ ];
+};
+
+layout(set=1, binding = 2) buffer SpheresSSBOOut {
+   Sphere spheresOut[ ];
+};
+
+layout(set=0, binding = 0, rgba32f) writeonly uniform image2D imgOutput;
+
+struct Ray {
+    vec3 origin;
+    vec3 direction;
+};
+
+
+bool intersectSphere(Ray ray, Sphere sphere, out float t) {
+    vec3 oc = ray.origin - sphere.center;
+    float a = dot(ray.direction, ray.direction);
+    float b = 2.0 * dot(oc, ray.direction);
+    float c = dot(oc, oc) - sphere.radius * sphere.radius;
+    float discriminant = b * b - 4.0 * a * c;
+    if (discriminant < 0.0) {
+        return false;
+    } else {
+        t = (-b - sqrt(discriminant)) / (2.0 * a);
+        return true;
+    }
+}
+
+void main() {
+    ivec2 pixelCoord = ivec2(gl_GlobalInvocationID.xy);
+    vec2 resolution = vec2(imageSize(imgOutput));
+    vec2 fragCoord = vec2(pixelCoord);
+
+    Ray ray;
+    ray.origin = inverseViewMatrix[3].xyz;
+    ray.direction = viewMatrix[3].xyz;
+
+    float t;
+    vec4 color = vec4(0.0);
+    for (int i; i < sphereCount; i++) {
+        if (intersectSphere(ray, spheresIn[i], t)) {
+            color = vec4(spheresIn[i].color, 1.0); 
+        }
+    }
+
+    imageStore(imgOutput, pixelCoord, color);
+}

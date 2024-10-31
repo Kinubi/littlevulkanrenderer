@@ -87,8 +87,13 @@ void Application::OnStart() {
 		lvrRenderer.getSwapChainRenderPass(),
 		globalSetLayout->getDescriptorSetLayout());
 
-	particleSystem =
-		std::make_unique<ParticleSystem>(lvrDevice, lvrRenderer.getSwapChainRenderPass());
+	// particleSystem =
+	// 	std::make_unique<ParticleSystem>(lvrDevice, lvrRenderer.getSwapChainRenderPass());
+
+	raytracingSystem = std::make_unique<RayTracingSystem>(
+		lvrDevice,
+		lvrRenderer.getSwapChainRenderPass(),
+		(VkExtent3D){1280, 720, 1});
 
 	viewerObject.transform.translation.z = -2.5f;
 
@@ -136,9 +141,17 @@ void Application::OnUpdate(float dt) {
 
 			ubo.projectionMatrix = camera.getProjection();
 			ubo.viewMatrix = camera.getView();
+			if (lvrWIndow.getExtent().width != raytracingSystem->getExtent().width ||
+				lvrWIndow.getExtent().height != raytracingSystem->getExtent().height) {
+				raytracingSystem = std::make_unique<RayTracingSystem>(
+					lvrDevice,
+					lvrRenderer.getSwapChainRenderPass(),
+					(VkExtent3D){lvrWIndow.getExtent().width, lvrWIndow.getExtent().height, 1});
+			};
 			ubo.inverseViewMatrix = camera.getInverseView();
 			pointLightSystem->update(frameInfo, ubo);
-			particleSystem->updateUniformBuffers(frameInfo);
+			// particleSystem->updateUniformBuffers(frameInfo);
+			raytracingSystem->updateUniformBuffers(frameInfo);
 
 			uboBuffers[frameIndex]->writeToBuffer(&ubo);
 			uboBuffers[frameIndex]->flush();
@@ -148,10 +161,12 @@ void Application::OnUpdate(float dt) {
 
 			simpleRenderSystem->renderGameObjects(frameInfo);
 			pointLightSystem->render(frameInfo);
-			particleSystem->dispatchCompute(frameInfo, computeCommandBuffer);
+			// particleSystem->dispatchCompute(frameInfo, computeCommandBuffer);
+			raytracingSystem->dispatchCompute(frameInfo, computeCommandBuffer);
 			computeCommandBuffer = computeShaderManager.endCompute();
 			lvrRenderer.submitComputeCommandBuffers(computeCommandBuffer);
-			particleSystem->renderParticles(frameInfo);
+			// particleSystem->renderParticles(frameInfo);
+			raytracingSystem->renderRays(frameInfo);
 			lvrRenderer.endSwapChainRenderPass(commandBuffer);
 			lvrRenderer.endFrame();
 		}

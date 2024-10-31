@@ -13,6 +13,7 @@
 #include "shaders/compute_shader_manager.h"
 #include "shaders/systems/particle_system.h"
 #include "shaders/systems/point_light_system.h"
+#include "shaders/systems/ray_tracing_system.h"
 #include "shaders/systems/simplerendersystem.h"
 #include "swapchain.h"
 #include "window.h"
@@ -47,7 +48,8 @@ class Application {
 	ComputeShaderManager computeShaderManager{lvrDevice};
 	std::unique_ptr<SimpleRenderSystem> simpleRenderSystem;
 	std::unique_ptr<PointLightSystem> pointLightSystem;
-	std::unique_ptr<ParticleSystem> particleSystem;
+	// std::unique_ptr<ParticleSystem> particleSystem;
+	std::unique_ptr<RayTracingSystem> raytracingSystem;
 
 	std::unique_ptr<DescriptorPool> globalPool{};
 	std::vector<std::unique_ptr<DescriptorPool>> framePools;
