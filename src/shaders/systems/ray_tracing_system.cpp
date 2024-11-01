@@ -34,7 +34,8 @@ void RayTracingSystem::dispatchCompute(FrameInfo& frameInfo, VkCommandBuffer com
 		uniformBuffers,
 		frameInfo,
 		computeCommandBuffer,
-		image->getImageInfo());
+		image->getImageInfo(),
+		glm::vec2((extent.width / 16) + 1, (extent.height / 16) + 1));
 	image->transitionLayout(
 		computeCommandBuffer,
 		VK_IMAGE_LAYOUT_GENERAL,

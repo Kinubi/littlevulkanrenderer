@@ -22,7 +22,8 @@ void ComputeShader::dispatchComputeShader(
 	std::vector<std::unique_ptr<Buffer>>& ubos,
 	FrameInfo frameInfo,
 	VkCommandBuffer computeCommandBuffer,
-	VkDescriptorImageInfo imageInfo) {
+	VkDescriptorImageInfo imageInfo,
+	glm::vec2 workGroupCount) {
 	uint32_t frameIndex = frameInfo.frameIndex;
 	computePipeline->bindCompute(computeCommandBuffer);
 
@@ -63,7 +64,7 @@ void ComputeShader::dispatchComputeShader(
 		0,
 		nullptr);
 
-	vkCmdDispatch(computeCommandBuffer, 1280 / 16, 720 / 16, 1);
+	vkCmdDispatch(computeCommandBuffer, workGroupCount.x, workGroupCount.y, 1);
 }
 
 void ComputeShader::createPipelineLayout() {

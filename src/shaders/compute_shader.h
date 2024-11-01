@@ -27,7 +27,8 @@ class ComputeShader {
 		std::vector<std::unique_ptr<Buffer>> &ubos,
 		FrameInfo frameInfo,
 		VkCommandBuffer computeCommandBuffer,
-		VkDescriptorImageInfo imageInfo);
+		VkDescriptorImageInfo imageInfo,
+		glm::vec2 workGroupCount = glm::vec2(1, 1));
 
 	std::vector<std::unique_ptr<Buffer>> shaderStorageBuffers;
 
