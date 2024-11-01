@@ -14,9 +14,9 @@
 namespace lvr {
 const int32_t SPHERE_COUNT = 4;
 struct Sphere {
-	glm::vec3 center;
+	alignas(16) glm::vec3 center{};
+	alignas(16) glm::vec3 color{};
 	float radius;
-	glm::vec3 color;
 };
 
 class RayTracingSystem {

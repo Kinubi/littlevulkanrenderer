@@ -10,8 +10,8 @@ layout(set = 1, binding = 0) uniform UniformBufferObject {
 
 struct Sphere {
     vec3 center;
-    float radius;
     vec3 color;
+    float radius;
 };
 
 layout(set=1, binding = 1) readonly buffer SpheresSSBOIn {
@@ -32,17 +32,19 @@ struct Ray {
 layout (local_size_x = 16, local_size_y = 16, local_size_z = 1) in;
 
 
-bool intersectSphere(Ray ray, Sphere sphere, out float t) {
+float intersectSphere(Ray ray, Sphere sphere, out float t) {
     vec3 oc = ray.origin - sphere.center;
     float a = dot(ray.direction, ray.direction);
     float b = 2.0 * dot(oc, ray.direction);
     float c = dot(oc, oc) - sphere.radius * sphere.radius;
     float discriminant = b * b - 4.0 * a * c;
     if (discriminant < 0.0) {
-        return false;
+        return 0;
     } else {
-        t = (-b - sqrt(discriminant)) / (2.0 * a);
-        return true;
+        float t0 = (-b - sqrt(discriminant)) / (2.0 * a);
+        float t1 = (-b + sqrt(discriminant)) / (2.0 * a);
+        t = (t0 < t1 && t0 > 0.0) ? t0 : t1;
+        return t;
     }
 }
 
@@ -52,25 +54,26 @@ void main() {
 
 
     Ray ray;
-    ray.origin = viewMatrix[3].xyz;
     vec2 uv = (pixelCoord / resolution) * 2.0 - 1.0;
-//    uv.y = -uv.y;
-    //vec3 cameraRightWorld = vec3(viewMatrix[0][0], viewMatrix[1][0], viewMatrix[2][0]);
-    //vec3 cameraUpWorld = vec3(viewMatrix[0][1], viewMatrix[1][1], viewMatrix[2][1]);
-    vec3 pointNDS = vec3(uv, -1.0);
-    vec4 pointNDSH = vec4(pointNDS, 1.0);
-    vec4 dirEye = inverseProjectionMatrix * pointNDSH;
-    dirEye.w = 0.;
-    //ray.direction = normalize(vec3(pixelCoord.x - resolution.x/2, resolution.y/2 - pixelCoord.y, -(resolution.y/2) / tan(0.5 * radians(45.0))));
-    ray.direction = normalize((inverseViewMatrix * dirEye).xyz);
+    vec4 clipSpacePos = vec4(uv, -1.0, 1.0);
+    vec4 viewSpacePos = inverseProjectionMatrix * clipSpacePos;
+    viewSpacePos /= viewSpacePos.w;
+    vec4 worldSpacePos = inverseViewMatrix * viewSpacePos;
+
+    ray.origin = vec3(inverseViewMatrix[3]);
+    ray.direction = normalize(worldSpacePos.xyz - ray.origin);
+
 
 
     vec4 color = vec4(0.0);
 
     float t;
+    float closestSphere = 1000000000.0;
     for (int i = 0; i < sphereCount; i++) {
-        if (intersectSphere(ray, spheresIn[i], t)) {
+        float hit = intersectSphere(ray, spheresIn[i], t);
+        if (hit < closestSphere && hit > 0.0) {
             color = vec4(spheresIn[i].color, 1.0); 
+            closestSphere = hit;
         }
     }
 

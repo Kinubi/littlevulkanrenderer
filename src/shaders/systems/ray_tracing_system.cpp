@@ -1,5 +1,6 @@
 #include "ray_tracing_system.h"
 
+#include <random>
 namespace lvr {
 RayTracingSystem::RayTracingSystem(Device& device, VkRenderPass renderPass, VkExtent3D extent)
 	: device(device), extent(extent) {
@@ -102,6 +103,7 @@ void RayTracingSystem::createPipeline(VkRenderPass renderPass) {
 	Pipeline::defaultPipelineConfigInfo(pipelineConfig, device.getMsaaSamples());
 	pipelineConfig.attributeDescriptions.clear();
 	pipelineConfig.bindingDescriptions.clear();
+	Pipeline::enableAlphaBlending(pipelineConfig);
 	pipelineConfig.renderPass = renderPass;
 	pipelineConfig.pipelineLayout = pipelineLayout;
 	pipeline = std::make_unique<Pipeline>(
@@ -129,16 +131,13 @@ void RayTracingSystem::createUniformBuffers() {
 
 void RayTracingSystem::createSpheres() {
 	spheres.resize(SPHERE_COUNT);
+	std::default_random_engine rndEngine((unsigned)time(nullptr));
+	std::uniform_real_distribution<float> rndDist(0.0f, 1.0f);
 	for (auto& sphere : spheres) {
-		sphere.center = glm::vec3(
-			static_cast<float>(rand()) / static_cast<float>(RAND_MAX),
-			static_cast<float>(rand()) / static_cast<float>(RAND_MAX),
-			static_cast<float>(rand()) / static_cast<float>(RAND_MAX));
-		sphere.radius = 0.5f;  // Example radius
-		sphere.color = glm::vec3(
-			static_cast<float>(rand()) / static_cast<float>(RAND_MAX),
-			static_cast<float>(rand()) / static_cast<float>(RAND_MAX),
-			static_cast<float>(rand()) / static_cast<float>(RAND_MAX));
+		sphere.center =
+			2.0f * glm::vec3(rndDist(rndEngine), rndDist(rndEngine), rndDist(rndEngine));
+		sphere.radius = 0.5f * rndDist(rndEngine);	// Example radius
+		sphere.color = glm::vec3(rndDist(rndEngine), rndDist(rndEngine), rndDist(rndEngine));
 	}
 }
 
