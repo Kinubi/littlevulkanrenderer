@@ -113,10 +113,11 @@ void Application::OnStart() {
 
 void Application::OnUpdate(float dt) {
 	glfwPollEvents();
-	auto oldView = viewerObject.transform.translation;
+	auto oldView = viewerObject.transform;
 
 	cameraController.moveInPlaneXZ(lvrWIndow.getGLFWWindow(), dt, viewerObject);
-	if (oldView != viewerObject.transform.translation) {
+	if ((oldView.translation != viewerObject.transform.translation) ||
+		(oldView.rotation != viewerObject.transform.rotation)) {
 		frameRayIndex = 0;
 	}
 	camera.setViewYXZ(viewerObject.transform.translation, viewerObject.transform.rotation);
@@ -174,7 +175,6 @@ void Application::OnUpdate(float dt) {
 			pointLightSystem->render(frameInfo);
 			lvrRenderer.endSwapChainRenderPass(commandBuffer);
 			lvrRenderer.endFrame();
-			std::cout << "frameIndex: " << frameRayIndex << std::endl;
 		}
 	}
 	frameRayIndex++;

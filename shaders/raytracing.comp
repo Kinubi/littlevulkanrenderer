@@ -1,9 +1,8 @@
 #version 450
 
-
 layout(set = 0, binding = 0) uniform UniformBufferObject {
-	mat4 viewMatrix;
-	mat4 inverseViewMatrix;
+    mat4 viewMatrix;
+    mat4 inverseViewMatrix;
     mat4 inverseProjectionMatrix;
     int sphereCount;
     int frameIndex;
@@ -16,7 +15,7 @@ struct Sphere {
 };
 
 layout(set=0, binding = 1) readonly buffer SpheresSSBOIn {
-   Sphere spheresIn[ ];
+    Sphere spheresIn[];
 };
 
 layout(set=0, binding = 2) uniform sampler2D imgInput;
@@ -28,43 +27,82 @@ struct Ray {
 };
 
 struct Hit {
-    float t;
-    float secondT;
-    vec3 normal;
-    vec3 color;
+    float hitDistance;
+    vec3 worldPosition;
+    vec3 worldNormal;
+    int sphereIndex;
 };
+
+vec4 emissionPower = vec4(30.0, 0.0, 0.0, 0.0);
 
 layout (local_size_x = 16, local_size_y = 16, local_size_z = 1) in;
 
-
-
-Hit intersectSphere(Ray ray, Sphere sphere, out float t) {
-    vec3 oc = ray.origin - sphere.center;
-    float a = dot(ray.direction, ray.direction);
-    float b = 2.0 * dot(oc, ray.direction);
-    float c = dot(oc, oc) - sphere.radius * sphere.radius;
-    float discriminant = b * b - 4.0 * a * c;
-    if (discriminant < 0.0) {
-        return Hit(0.0, 0.0, vec3(0.0), vec3(0.0));
-    } else {
-        float t0 = (-b - sqrt(discriminant)) / (2.0 * a);
-        float t1 = (-b + sqrt(discriminant)) / (2.0 * a);
-        t = (t0 < t1 && t0 > 0.0) ? t0 : t1;
-        return Hit(t, 0.0, normalize(ray.origin + t * ray.direction - sphere.center), sphere.color);
-    }
+Hit miss(Ray ray) {
+    return Hit(-1.0, vec3(0), vec3(0), 0);
 }
 
-float random(uint seed) {
-    seed = seed * 747796405u + 2891336453u;
-    uint result = ((seed >> ((seed >> 28) + 4U)) ^ seed) * 277803737u;
-    result = (result >> 22) ^ result;
-    return float(result) / 4294967295.0;
+Hit closestHit(Ray ray, float hitDistance, int sphereIndex) {
+    Hit payload;
+    payload.hitDistance = hitDistance;
+    payload.sphereIndex = sphereIndex;
+
+    Sphere closestSphere = spheresIn[sphereIndex];
+
+    payload.worldPosition = ray.origin  + ray.direction * hitDistance;
+    payload.worldNormal = normalize(payload.worldPosition - closestSphere.center);
+
+    return payload;
+}
+
+Hit traceRay(Ray ray) {
+    int closestSphere = -1;
+    float hitDistance = 10000000.0;
+    for (int i = 0; i < sphereCount; i++) {
+        Sphere sphere = spheresIn[i];
+        vec3 oc = ray.origin - sphere.center;
+        float a = dot(ray.direction, ray.direction);
+        float b = 2.0 * dot(oc, ray.direction);
+        float c = dot(oc, oc) - sphere.radius * sphere.radius;
+        float discriminant = b * b - 4.0 * a * c;
+        if (discriminant < 0.0) {
+            continue;
+        } else {
+            float t0 = (-b - sqrt(discriminant)) / (2.0 * a);
+            float t1 = (-b + sqrt(discriminant)) / (2.0 * a);
+            float t = (t0 < t1 && t0 > 0.0) ? t0 : t1; 
+            if (t < hitDistance) {
+                hitDistance = t;
+                closestSphere = i;
+            }
+        }
+    }
+    if (closestSphere < 0) {
+        return miss(ray);
+    }
+    return closestHit(ray, hitDistance, closestSphere);
+}
+
+uint PCG_Hash(uint seed) {
+    uint state = seed * 747796405u + 2891336453u;
+    uint word = ((state >> ((state >> 28u) + 4u)) ^ state) * 277803737u;
+    return (word >> 22u) ^ word;
+}
+
+float RandomFloat(out uint seed) {
+    seed = PCG_Hash(seed);
+    return float(seed)/pow(2, 32);
+}
+
+vec3 InUnitSphere(out uint seed) {
+    return normalize(vec3(
+            RandomFloat(seed) * 2.0f - 1.0f, 
+            RandomFloat(seed) * 2.0f - 1.0f, 
+            RandomFloat(seed) * 2.0f - 1.0f));
 }
 
 void main() {
     ivec2 pixelCoord = ivec2(gl_GlobalInvocationID.xy);
     vec2 resolution = vec2(imageSize(imgOutput));
-
 
     Ray ray;
     vec2 uv = (pixelCoord / resolution) * 2.0 - 1.0;
@@ -76,37 +114,51 @@ void main() {
     ray.origin = vec3(inverseViewMatrix[3]);
     ray.direction = normalize(worldSpacePos.xyz - ray.origin);
 
-
-
-    vec4 color = vec4(0.0);
-    int numBounces = 40;
+    int numRays = 100;
+    vec3 contribution = vec3(1.0);
+    vec4 light = vec4(0.0);
+    vec4 total_color = vec4(0.0);
+    int numBounces = 15;
     float t;
-    for (int bounce = 0; bounce < numBounces; bounce++) {
-        float closestSphere = 1000000000.0;
-        Hit closestHit;
-        for (int i = 0; i < sphereCount; i++) {
-            Hit hit = intersectSphere(ray, spheresIn[i], t);
-            if (hit.t < closestSphere && hit.t > 0.0) {
-                closestSphere = hit.t;
-                closestHit = hit;
+    uint seed = uint(pixelCoord.x + pixelCoord.y) * uint(resolution.x);
+    seed *= frameIndex;
+    for (int rayNum=0; rayNum < numRays; rayNum++) {
+        Ray outGoingRay = ray;
+        outGoingRay.direction = normalize(outGoingRay.direction + 0.001 * InUnitSphere(seed));
+        int bounceCount = 0;
+
+        for (int bounce = 0; bounce < numBounces; bounce++) {
+            seed += bounce;
+            Hit hit = traceRay(outGoingRay);
+            float isSpecular = RandomFloat(seed);
+            if (hit.hitDistance < 0.0f) {
+                vec4 skycolor = vec4(0.6, 0.7, 0.9, 1.0);
+                light += vec4(contribution, 1.0f) * skycolor;
+
+                break;
             }
+            Sphere sphere = spheresIn[hit.sphereIndex];
+            light += vec4(contribution * emissionPower[hit.sphereIndex] * sphere.color, 1.0);
+            contribution *= sphere.color;
+            outGoingRay.origin = hit.worldPosition + hit.worldNormal;
+            vec3 diffuseDir = normalize(hit.worldNormal + InUnitSphere(seed));
+            vec3 specularDir = reflect(ray.direction, hit.worldNormal);
+            outGoingRay.direction = normalize(mix(diffuseDir, specularDir, isSpecular));
+            bounceCount++;
         }
-        if (closestSphere < 1000000000.0) {
-            color += vec4(closestHit.color, 1.0);// * dot(closestHit.normal, -ray.direction);
-            ray.origin = ray.origin + closestSphere * ray.direction;
-            uint seed = floatBitsToUint(texture(imgInput, pixelCoord).x/ closestSphere + texture(imgInput, pixelCoord).y);
-            ray.direction = reflect(ray.direction, closestHit.normal + vec3(random(seed), random(seed), random(seed)));
-        } else {
-            color *=vec4(0.1, 0.1, 0.3, 1.0);
-            break;
+        if (bounceCount == 0) {
+            light = vec4(0.0);
         }
+        total_color += light;
     }
+    light /= numRays;
 
     vec4 sampledColor = texture(imgInput, vec2(pixelCoord) / resolution);
-    if (sampledColor.w >= 1) {
-     imageStore(imgOutput, pixelCoord, color + texture(imgInput, pixelCoord)/(frameIndex + 1));
+    if (sampledColor.w >= 0.8) {
+        float weight = 1.0 / (frameIndex + 1);
+        vec4 total_color = clamp(light * weight + texture(imgInput, pixelCoord) * (1-weight), vec4(0.0), vec4(1.0));
+        imageStore(imgOutput, pixelCoord, total_color);
     } else {
-        imageStore(imgOutput, pixelCoord, color )
-;    }
-    
+        imageStore(imgOutput, pixelCoord, light);
+    }
 }
