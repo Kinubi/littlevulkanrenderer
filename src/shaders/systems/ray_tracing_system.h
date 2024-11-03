@@ -25,6 +25,7 @@ class RayTracingSystem {
 		glm::mat4 inverseViewMatrix{1.0f};
 		glm::mat4 inverseProjectionMatrix{1.0f};
 		int32_t sphereCount{SPHERE_COUNT};
+		int32_t frameIndex{0};
 	};
 
    public:
@@ -39,7 +40,7 @@ class RayTracingSystem {
 
 	int32_t const getFrameIndex() const { return frameIndex; }
 
-	void updateUniformBuffers(FrameInfo &frameInfo);
+	void updateUniformBuffers(FrameInfo &frameInfo, int32_t frameIndex);
 	VkExtent3D getExtent() { return extent; }
 
    private:
@@ -53,6 +54,7 @@ class RayTracingSystem {
 
 	std::unique_ptr<ComputeShader> computeShader;
 	std::vector<std::unique_ptr<Buffer>> uniformBuffers;
+	std::vector<std::unique_ptr<Buffer>> spheresBuffers;
 	std::vector<Sphere> spheres = std::vector<Sphere>(SPHERE_COUNT);
 	std::shared_ptr<Texture> image = nullptr;
 	std::unique_ptr<DescriptorSetLayout> raytracingSystemLayout{};

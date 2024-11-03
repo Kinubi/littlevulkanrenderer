@@ -1,11 +1,12 @@
 #version 450
 
 
-layout(set = 1, binding = 0) uniform UniformBufferObject {
+layout(set = 0, binding = 0) uniform UniformBufferObject {
 	mat4 viewMatrix;
 	mat4 inverseViewMatrix;
     mat4 inverseProjectionMatrix;
     int sphereCount;
+    int frameIndex;
 };
 
 struct Sphere {
@@ -14,38 +15,50 @@ struct Sphere {
     float radius;
 };
 
-layout(set=1, binding = 1) readonly buffer SpheresSSBOIn {
+layout(set=0, binding = 1) readonly buffer SpheresSSBOIn {
    Sphere spheresIn[ ];
 };
 
-layout(set=1, binding = 2) buffer SpheresSSBOOut {
-   Sphere spheresOut[ ];
-};
-
-layout(set=0, binding = 0, rgba32f) writeonly uniform image2D imgOutput;
+layout(set=0, binding = 2) uniform sampler2D imgInput;
+layout(set=0, binding = 3, rgba32f) writeonly uniform image2D imgOutput;
 
 struct Ray {
     vec3 origin;
     vec3 direction;
 };
 
+struct Hit {
+    float t;
+    float secondT;
+    vec3 normal;
+    vec3 color;
+};
+
 layout (local_size_x = 16, local_size_y = 16, local_size_z = 1) in;
 
 
-float intersectSphere(Ray ray, Sphere sphere, out float t) {
+
+Hit intersectSphere(Ray ray, Sphere sphere, out float t) {
     vec3 oc = ray.origin - sphere.center;
     float a = dot(ray.direction, ray.direction);
     float b = 2.0 * dot(oc, ray.direction);
     float c = dot(oc, oc) - sphere.radius * sphere.radius;
     float discriminant = b * b - 4.0 * a * c;
     if (discriminant < 0.0) {
-        return 0;
+        return Hit(0.0, 0.0, vec3(0.0), vec3(0.0));
     } else {
         float t0 = (-b - sqrt(discriminant)) / (2.0 * a);
         float t1 = (-b + sqrt(discriminant)) / (2.0 * a);
         t = (t0 < t1 && t0 > 0.0) ? t0 : t1;
-        return t;
+        return Hit(t, 0.0, normalize(ray.origin + t * ray.direction - sphere.center), sphere.color);
     }
+}
+
+float random(uint seed) {
+    seed = seed * 747796405u + 2891336453u;
+    uint result = ((seed >> ((seed >> 28) + 4U)) ^ seed) * 277803737u;
+    result = (result >> 22) ^ result;
+    return float(result) / 4294967295.0;
 }
 
 void main() {
@@ -66,17 +79,34 @@ void main() {
 
 
     vec4 color = vec4(0.0);
-
+    int numBounces = 40;
     float t;
-    float closestSphere = 1000000000.0;
-    for (int i = 0; i < sphereCount; i++) {
-        float hit = intersectSphere(ray, spheresIn[i], t);
-        if (hit < closestSphere && hit > 0.0) {
-            color = vec4(spheresIn[i].color, 1.0); 
-            closestSphere = hit;
+    for (int bounce = 0; bounce < numBounces; bounce++) {
+        float closestSphere = 1000000000.0;
+        Hit closestHit;
+        for (int i = 0; i < sphereCount; i++) {
+            Hit hit = intersectSphere(ray, spheresIn[i], t);
+            if (hit.t < closestSphere && hit.t > 0.0) {
+                closestSphere = hit.t;
+                closestHit = hit;
+            }
+        }
+        if (closestSphere < 1000000000.0) {
+            color += vec4(closestHit.color, 1.0);// * dot(closestHit.normal, -ray.direction);
+            ray.origin = ray.origin + closestSphere * ray.direction;
+            uint seed = floatBitsToUint(texture(imgInput, pixelCoord).x/ closestSphere + texture(imgInput, pixelCoord).y);
+            ray.direction = reflect(ray.direction, closestHit.normal + vec3(random(seed), random(seed), random(seed)));
+        } else {
+            color *=vec4(0.1, 0.1, 0.3, 1.0);
+            break;
         }
     }
 
-
-    imageStore(imgOutput, pixelCoord, color);
+    vec4 sampledColor = texture(imgInput, vec2(pixelCoord) / resolution);
+    if (sampledColor.w >= 1) {
+     imageStore(imgOutput, pixelCoord, color + texture(imgInput, pixelCoord)/(frameIndex + 1));
+    } else {
+        imageStore(imgOutput, pixelCoord, color )
+;    }
+    
 }

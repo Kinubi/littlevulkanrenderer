@@ -61,6 +61,7 @@ class ParticleSystem {
 
 	std::unique_ptr<ComputeShader> computeShader;
 	std::vector<std::unique_ptr<Buffer>> uniformBuffers;
+	std::vector<std::unique_ptr<Buffer>> particlesBuffers;
 	std::vector<Particle> particles = std::vector<Particle>(PARTICLE_COUNT);
 
 	std::unique_ptr<Pipeline> pipeline;

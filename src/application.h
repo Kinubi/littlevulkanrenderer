@@ -65,6 +65,7 @@ class Application {
 
 	std::vector<VkDescriptorSet> globalDescriptorSets =
 		std::vector<VkDescriptorSet>(SwapChain::MAX_FRAMES_IN_FLIGHT);
+	int32_t frameRayIndex{0};
 };
 
 }  // namespace lvr

@@ -113,8 +113,12 @@ void Application::OnStart() {
 
 void Application::OnUpdate(float dt) {
 	glfwPollEvents();
+	auto oldView = viewerObject.transform.translation;
 
 	cameraController.moveInPlaneXZ(lvrWIndow.getGLFWWindow(), dt, viewerObject);
+	if (oldView != viewerObject.transform.translation) {
+		frameRayIndex = 0;
+	}
 	camera.setViewYXZ(viewerObject.transform.translation, viewerObject.transform.rotation);
 
 	float aspect = lvrRenderer.getAspectRatio();
@@ -151,7 +155,7 @@ void Application::OnUpdate(float dt) {
 			ubo.inverseViewMatrix = camera.getInverseView();
 			pointLightSystem->update(frameInfo, ubo);
 			// particleSystem->updateUniformBuffers(frameInfo);
-			raytracingSystem->updateUniformBuffers(frameInfo);
+			raytracingSystem->updateUniformBuffers(frameInfo, frameRayIndex);
 
 			uboBuffers[frameIndex]->writeToBuffer(&ubo);
 			uboBuffers[frameIndex]->flush();
@@ -170,8 +174,10 @@ void Application::OnUpdate(float dt) {
 			pointLightSystem->render(frameInfo);
 			lvrRenderer.endSwapChainRenderPass(commandBuffer);
 			lvrRenderer.endFrame();
+			std::cout << "frameIndex: " << frameRayIndex << std::endl;
 		}
 	}
+	frameRayIndex++;
 }
 
 void Application::loadGameObjects() {

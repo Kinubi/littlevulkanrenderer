@@ -11,12 +11,15 @@ RayTracingSystem::RayTracingSystem(Device& device, VkRenderPass renderPass, VkEx
 		renderPass,
 		std::vector<std::string>{"shaders/raytracing.comp"},
 		DescriptorSetLayout::Builder(device)
-			.addBinding(0, VK_DESCRIPTOR_TYPE_STORAGE_IMAGE, VK_SHADER_STAGE_COMPUTE_BIT)
+			.addBinding(0, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, VK_SHADER_STAGE_COMPUTE_BIT)
+			.addBinding(1, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, VK_SHADER_STAGE_COMPUTE_BIT)
+			.addBinding(2, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, VK_SHADER_STAGE_COMPUTE_BIT)
+			.addBinding(3, VK_DESCRIPTOR_TYPE_STORAGE_IMAGE, VK_SHADER_STAGE_COMPUTE_BIT)
 			.build());
 
 	createSpheres();
 	createUniformBuffers();
-	computeShader->createShaderStorageBuffers<Sphere>(spheres);
+	spheresBuffers = computeShader->createShaderStorageBuffers<Sphere>(spheres);
 	createImage();
 }
 
@@ -30,11 +33,23 @@ void RayTracingSystem::dispatchCompute(FrameInfo& frameInfo, VkCommandBuffer com
 		VK_IMAGE_LAYOUT_GENERAL,
 		VK_IMAGE_LAYOUT_GENERAL,
 		true);
+
+	VkDescriptorSet computeDescriptorSet;
+	auto bufferInfoubo = uniformBuffers[frameIndex]->descriptorInfo();
+	auto imageInfoLastFrame = image->getImageInfo();
+	auto imageInfo = image->getImageInfo();
+	auto bufferInfoCurrentFrame = spheresBuffers[frameIndex]->descriptorInfo();
+
+	DescriptorWriter(*computeShader->getComputeShaderLayout(), frameInfo.frameDescriptorPool)
+		.writeBuffer(0, &bufferInfoubo)
+		.writeBuffer(1, &bufferInfoCurrentFrame)
+		.writeImage(2, &imageInfoLastFrame)
+		.writeImage(3, &imageInfo)
+		.build(computeDescriptorSet);
+
 	computeShader->dispatchComputeShader(
-		uniformBuffers,
-		frameInfo,
 		computeCommandBuffer,
-		image->getImageInfo(),
+		computeDescriptorSet,
 		glm::vec2((extent.width / 16) + 1, (extent.height / 16) + 1));
 	image->transitionLayout(
 		computeCommandBuffer,
@@ -69,12 +84,12 @@ void RayTracingSystem::renderRays(FrameInfo& frameInfo) {
 	vkCmdDraw(frameInfo.commandBuffer, 6, 1, 0, 0);
 }
 
-void RayTracingSystem::updateUniformBuffers(FrameInfo& frameInfo) {
+void RayTracingSystem::updateUniformBuffers(FrameInfo& frameInfo, int32_t frameIndex) {
 	UniformBufferObject ubo{};
 	ubo.viewMatrix = frameInfo.camera.getView();
 	ubo.inverseViewMatrix = frameInfo.camera.getInverseView();
 	ubo.inverseProjectionMatrix = glm::inverse(frameInfo.camera.getProjection());
-
+	ubo.frameIndex = frameIndex;
 	uniformBuffers[frameInfo.frameIndex]->writeToBuffer(&ubo);
 }
 

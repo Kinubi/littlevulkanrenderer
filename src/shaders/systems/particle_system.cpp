@@ -10,12 +10,16 @@ ParticleSystem::ParticleSystem(Device& device, VkRenderPass renderPass) : device
 		device,
 		renderPass,
 		std::vector<std::string>{"shaders/particles.comp"},
-		DescriptorSetLayout::Builder(device).build());
+		DescriptorSetLayout::Builder(device)
+			.addBinding(0, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, VK_SHADER_STAGE_COMPUTE_BIT)
+			.addBinding(1, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, VK_SHADER_STAGE_COMPUTE_BIT)
+			.addBinding(2, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, VK_SHADER_STAGE_COMPUTE_BIT)
+			.build());
 	createPipelineLayout();
 	createPipeline(renderPass);
 	createParticles();
 	createUniformBuffers();
-	computeShader->createShaderStorageBuffers<Particle>(particles);
+	particlesBuffers = computeShader->createShaderStorageBuffers<Particle>(particles);
 }
 
 ParticleSystem::~ParticleSystem() {
@@ -69,18 +73,29 @@ void ParticleSystem::createUniformBuffers() {
 }
 
 void ParticleSystem::dispatchCompute(FrameInfo& frameInfo, VkCommandBuffer computeCommandBuffer) {
+	VkDescriptorSet computeDescriptorSet;
+	auto bufferInfoubo = uniformBuffers[frameIndex]->descriptorInfo();
+	auto bufferInfoLastFrame =
+		particlesBuffers[(frameIndex - 1) % SwapChain::MAX_FRAMES_IN_FLIGHT]->descriptorInfo();
+	auto bufferInfoCurrentFrame = particlesBuffers[frameIndex]->descriptorInfo();
+
+	DescriptorWriter(*computeShader->getComputeShaderLayout(), frameInfo.frameDescriptorPool)
+		.writeBuffer(0, &bufferInfoubo)
+		.writeBuffer(1, &bufferInfoLastFrame)
+		.writeBuffer(2, &bufferInfoCurrentFrame)
+		.build(computeDescriptorSet);
+
 	computeShader->dispatchComputeShader(
-		uniformBuffers,
-		frameInfo,
 		computeCommandBuffer,
-		VkDescriptorImageInfo{});
+		computeDescriptorSet,
+		glm::vec2(32, 1));
 }
 
 void ParticleSystem::renderParticles(FrameInfo& frameInfo) {
 	frameIndex = frameInfo.frameIndex;
 	pipeline->bind(frameInfo.commandBuffer);
 
-	VkBuffer buffers[] = {computeShader->shaderStorageBuffers[frameIndex]->getBuffer()};
+	VkBuffer buffers[] = {particlesBuffers[frameIndex]->getBuffer()};
 
 	VkDeviceSize offsets[] = {0};
 	vkCmdBindVertexBuffers(frameInfo.commandBuffer, 0, 1, buffers, offsets);
