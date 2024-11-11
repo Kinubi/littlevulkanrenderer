@@ -13,7 +13,7 @@ RayTracingSystem::RayTracingSystem(Device& device, VkRenderPass renderPass, VkEx
 		DescriptorSetLayout::Builder(device)
 			.addBinding(0, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, VK_SHADER_STAGE_COMPUTE_BIT)
 			.addBinding(1, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, VK_SHADER_STAGE_COMPUTE_BIT)
-			.addBinding(2, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, VK_SHADER_STAGE_COMPUTE_BIT)
+			.addBinding(2, VK_DESCRIPTOR_TYPE_STORAGE_IMAGE, VK_SHADER_STAGE_COMPUTE_BIT)
 			.addBinding(3, VK_DESCRIPTOR_TYPE_STORAGE_IMAGE, VK_SHADER_STAGE_COMPUTE_BIT)
 			.build());
 
@@ -150,14 +150,32 @@ void RayTracingSystem::createUniformBuffers() {
 }
 
 void RayTracingSystem::createSpheres() {
-	spheres.resize(SPHERE_COUNT);
+	spheres.reserve(SPHERE_COUNT);
 	std::default_random_engine rndEngine((unsigned)time(nullptr));
 	std::uniform_real_distribution<float> rndDist(0.0f, 1.0f);
-	for (auto& sphere : spheres) {
-		sphere.center =
-			4.0f * glm::vec3(rndDist(rndEngine), rndDist(rndEngine), rndDist(rndEngine));
-		sphere.radius = rndDist(rndEngine) + 1;	 // Example radius
+
+	{
+		Sphere sphere;
+		sphere.center = {0.0f, 0.0f, 0.0f};
+		sphere.radius = 1.0f;
 		sphere.color = glm::vec3(rndDist(rndEngine), rndDist(rndEngine), rndDist(rndEngine));
+		spheres.emplace_back(sphere);
+	}
+
+	{
+		Sphere sphere;
+		sphere.center = {2.0f, 0.0f, 0.0f};
+		sphere.radius = 1.0f;
+		sphere.color = glm::vec3(rndDist(rndEngine), rndDist(rndEngine), rndDist(rndEngine));
+		spheres.emplace_back(sphere);
+	}
+
+	{
+		Sphere sphere;
+		sphere.center = {0.0f, -101.0f, 0.0f};
+		sphere.radius = 100.0f;
+		sphere.color = glm::vec3(rndDist(rndEngine), rndDist(rndEngine), rndDist(rndEngine));
+		spheres.emplace_back(sphere);
 	}
 }
 

@@ -13,7 +13,7 @@
 #include "pipeline.h"
 
 namespace lvr {
-const int32_t SPHERE_COUNT = 4;
+const int32_t SPHERE_COUNT = 3;
 struct Sphere {
 	alignas(16) glm::vec3 center{};
 	alignas(16) glm::vec3 color{};
@@ -54,7 +54,7 @@ class RayTracingSystem {
 	std::unique_ptr<ComputeShader> computeShader;
 	std::vector<std::unique_ptr<Buffer>> uniformBuffers;
 	std::vector<std::unique_ptr<Buffer>> spheresBuffers;
-	std::vector<Sphere> spheres = std::vector<Sphere>(SPHERE_COUNT);
+	std::vector<Sphere> spheres;
 
 	std::vector<std::shared_ptr<Texture>> images;
 	std::unique_ptr<DescriptorSetLayout> raytracingSystemLayout{};
