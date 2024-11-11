@@ -2,6 +2,7 @@
 #include <vulkan/vulkan.h>
 
 #include <glm/glm.hpp>
+#include <map>
 #include <memory>
 #include <vector>
 
@@ -38,8 +39,6 @@ class RayTracingSystem {
 	RayTracingSystem(const RayTracingSystem &) = delete;
 	RayTracingSystem &operator=(const RayTracingSystem &) = delete;
 
-	int32_t const getFrameIndex() const { return frameIndex; }
-
 	void updateUniformBuffers(FrameInfo &frameInfo, int32_t frameIndex);
 	VkExtent3D getExtent() { return extent; }
 
@@ -56,12 +55,13 @@ class RayTracingSystem {
 	std::vector<std::unique_ptr<Buffer>> uniformBuffers;
 	std::vector<std::unique_ptr<Buffer>> spheresBuffers;
 	std::vector<Sphere> spheres = std::vector<Sphere>(SPHERE_COUNT);
-	std::shared_ptr<Texture> image = nullptr;
+
+	std::vector<std::shared_ptr<Texture>> images;
 	std::unique_ptr<DescriptorSetLayout> raytracingSystemLayout{};
 
 	std::unique_ptr<Pipeline> pipeline;
 	VkPipelineLayout pipelineLayout{};
-	int32_t frameIndex{0};
+
 	VkExtent3D extent;
 };
 

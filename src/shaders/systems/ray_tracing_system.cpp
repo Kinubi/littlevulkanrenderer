@@ -28,17 +28,20 @@ RayTracingSystem::~RayTracingSystem() {
 }
 
 void RayTracingSystem::dispatchCompute(FrameInfo& frameInfo, VkCommandBuffer computeCommandBuffer) {
-	image->transitionLayout(
-		computeCommandBuffer,
-		VK_IMAGE_LAYOUT_GENERAL,
-		VK_IMAGE_LAYOUT_GENERAL,
-		true);
+	for (auto image : images) {
+		image->transitionLayout(
+			computeCommandBuffer,
+			VK_IMAGE_LAYOUT_GENERAL,
+			VK_IMAGE_LAYOUT_GENERAL,
+			true);
+	}
 
 	VkDescriptorSet computeDescriptorSet;
-	auto bufferInfoubo = uniformBuffers[frameIndex]->descriptorInfo();
-	auto imageInfoLastFrame = image->getImageInfo();
-	auto imageInfo = image->getImageInfo();
-	auto bufferInfoCurrentFrame = spheresBuffers[frameIndex]->descriptorInfo();
+	auto bufferInfoubo = uniformBuffers[frameInfo.frameIndex]->descriptorInfo();
+	auto imageInfoLastFrame =
+		images[abs((frameInfo.frameIndex - 1) % SwapChain::MAX_FRAMES_IN_FLIGHT)]->getImageInfo();
+	auto imageInfo = images[frameInfo.frameIndex]->getImageInfo();
+	auto bufferInfoCurrentFrame = spheresBuffers[frameInfo.frameIndex]->descriptorInfo();
 
 	DescriptorWriter(*computeShader->getComputeShaderLayout(), frameInfo.frameDescriptorPool)
 		.writeBuffer(0, &bufferInfoubo)
@@ -51,20 +54,21 @@ void RayTracingSystem::dispatchCompute(FrameInfo& frameInfo, VkCommandBuffer com
 		computeCommandBuffer,
 		computeDescriptorSet,
 		glm::vec2((extent.width / 16) + 1, (extent.height / 16) + 1));
-	image->transitionLayout(
-		computeCommandBuffer,
-		VK_IMAGE_LAYOUT_GENERAL,
-		VK_IMAGE_LAYOUT_GENERAL,
-		false);
+	for (auto image : images) {
+		image->transitionLayout(
+			computeCommandBuffer,
+			VK_IMAGE_LAYOUT_GENERAL,
+			VK_IMAGE_LAYOUT_GENERAL,
+			false);
+	}
 }
 
 void RayTracingSystem::renderRays(FrameInfo& frameInfo) {
-	frameIndex = frameInfo.frameIndex;
 	pipeline->bind(frameInfo.commandBuffer);
 
 	VkDescriptorSet raytracingDescriptorSet;
 
-	auto imageInfo = image->getImageInfo();
+	auto imageInfo = images[frameInfo.frameIndex]->getImageInfo();
 
 	DescriptorWriter(*raytracingSystemLayout, frameInfo.frameDescriptorPool)
 		.writeImage(0, &imageInfo)
@@ -151,19 +155,22 @@ void RayTracingSystem::createSpheres() {
 	std::uniform_real_distribution<float> rndDist(0.0f, 1.0f);
 	for (auto& sphere : spheres) {
 		sphere.center =
-			2.0f * glm::vec3(rndDist(rndEngine), rndDist(rndEngine), rndDist(rndEngine));
-		sphere.radius = 0.5f * rndDist(rndEngine);	// Example radius
+			4.0f * glm::vec3(rndDist(rndEngine), rndDist(rndEngine), rndDist(rndEngine));
+		sphere.radius = rndDist(rndEngine) + 1;	 // Example radius
 		sphere.color = glm::vec3(rndDist(rndEngine), rndDist(rndEngine), rndDist(rndEngine));
 	}
 }
 
 void RayTracingSystem::createImage() {
-	image = std::make_shared<Texture>(
-		device,
-		VK_FORMAT_R32G32B32A32_SFLOAT,
-		extent,
-		VK_IMAGE_USAGE_STORAGE_BIT | VK_IMAGE_USAGE_SAMPLED_BIT,
-		VK_SAMPLE_COUNT_1_BIT);
+	images.resize(SwapChain::MAX_FRAMES_IN_FLIGHT);
+	for (int32_t i = 0; i < SwapChain::MAX_FRAMES_IN_FLIGHT; i++) {
+		images[i] = std::move(std::make_shared<Texture>(
+			device,
+			VK_FORMAT_R32G32B32A32_SFLOAT,
+			extent,
+			VK_IMAGE_USAGE_STORAGE_BIT | VK_IMAGE_USAGE_SAMPLED_BIT,
+			VK_SAMPLE_COUNT_1_BIT));
+	}
 }
 
 }  // namespace lvr

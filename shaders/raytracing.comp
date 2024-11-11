@@ -18,7 +18,7 @@ layout(set=0, binding = 1) readonly buffer SpheresSSBOIn {
     Sphere spheresIn[];
 };
 
-layout(set=0, binding = 2) uniform sampler2D imgInput;
+layout(set=0, binding = 2, rgba32f) readonly uniform image2D imgInput;
 layout(set=0, binding = 3, rgba32f) writeonly uniform image2D imgOutput;
 
 struct Ray {
@@ -33,7 +33,8 @@ struct Hit {
     int sphereIndex;
 };
 
-vec4 emissionPower = vec4(30.0, 0.0, 0.0, 0.0);
+vec4 emissionPower = vec4(50.0, 0.0, 0.0, 0.0);
+const float SPHERE_JITTER_FACTOR = 0.01;
 
 layout (local_size_x = 16, local_size_y = 16, local_size_z = 1) in;
 
@@ -90,7 +91,7 @@ uint PCG_Hash(uint seed) {
 
 float RandomFloat(out uint seed) {
     seed = PCG_Hash(seed);
-    return float(seed)/pow(2, 32);
+    return float(seed)/pow(2, 64);
 }
 
 vec3 InUnitSphere(out uint seed) {
@@ -103,62 +104,66 @@ vec3 InUnitSphere(out uint seed) {
 void main() {
     ivec2 pixelCoord = ivec2(gl_GlobalInvocationID.xy);
     vec2 resolution = vec2(imageSize(imgOutput));
+    uint seed = uint(pixelCoord.x + pixelCoord.y) * uint(resolution.x);
 
     Ray ray;
     vec2 uv = (pixelCoord / resolution) * 2.0 - 1.0;
+
     vec4 clipSpacePos = vec4(uv, -1.0, 1.0);
     vec4 viewSpacePos = inverseProjectionMatrix * clipSpacePos;
     viewSpacePos /= viewSpacePos.w;
     vec4 worldSpacePos = inverseViewMatrix * viewSpacePos;
 
     ray.origin = vec3(inverseViewMatrix[3]);
+
     ray.direction = normalize(worldSpacePos.xyz - ray.origin);
 
     int numRays = 100;
-    vec3 contribution = vec3(1.0);
-    vec4 light = vec4(0.0);
+
     vec4 total_color = vec4(0.0);
-    int numBounces = 15;
+    int numBounces = 10;
     float t;
-    uint seed = uint(pixelCoord.x + pixelCoord.y) * uint(resolution.x);
+
     seed *= frameIndex;
-    for (int rayNum=0; rayNum < numRays; rayNum++) {
+
+    for (int rayNum = 0; rayNum < numRays; rayNum++) {
+        vec3 contribution = vec3(1.0);
+        vec4 light = vec4(0.0);
         Ray outGoingRay = ray;
-        outGoingRay.direction = normalize(outGoingRay.direction + 0.001 * InUnitSphere(seed));
-        int bounceCount = 0;
 
         for (int bounce = 0; bounce < numBounces; bounce++) {
             seed += bounce;
             Hit hit = traceRay(outGoingRay);
             float isSpecular = RandomFloat(seed);
             if (hit.hitDistance < 0.0f) {
-                vec4 skycolor = vec4(0.6, 0.7, 0.9, 1.0);
-                light += vec4(contribution, 1.0f) * skycolor;
+                vec3 skycolor = vec3(0.3, 0.5, 0.4);
+                light += vec4(contribution, 1.0f) * vec4(skycolor.xyz, 1.0);
 
                 break;
             }
             Sphere sphere = spheresIn[hit.sphereIndex];
-            light += vec4(contribution * emissionPower[hit.sphereIndex] * sphere.color, 1.0);
             contribution *= sphere.color;
+            light += vec4(contribution * emissionPower[hit.sphereIndex] * sphere.color, 1.0);
             outGoingRay.origin = hit.worldPosition + hit.worldNormal;
             vec3 diffuseDir = normalize(hit.worldNormal + InUnitSphere(seed));
             vec3 specularDir = reflect(ray.direction, hit.worldNormal);
             outGoingRay.direction = normalize(mix(diffuseDir, specularDir, isSpecular));
-            bounceCount++;
         }
-        if (bounceCount == 0) {
-            light = vec4(0.0);
-        }
+
         total_color += light;
     }
-    light /= numRays;
+    total_color /= numRays;
 
-    vec4 sampledColor = texture(imgInput, vec2(pixelCoord) / resolution);
-    if (sampledColor.w >= 0.8) {
-        float weight = 1.0 / (frameIndex + 1);
-        vec4 total_color = clamp(light * weight + texture(imgInput, pixelCoord) * (1-weight), vec4(0.0), vec4(1.0));
+    //vec2 textureUv = pixelCoord/ vec2(textureSize(imgInput, 0));
+    //vec4 sampledColor = texture(imgInput, textureUv);
+    vec4 sampledColor = imageLoad(imgInput, pixelCoord);
+
+    if (frameIndex == 0) {
         imageStore(imgOutput, pixelCoord, total_color);
     } else {
-        imageStore(imgOutput, pixelCoord, light);
+        float weight = 1.0 / (frameIndex);
+
+        vec4 new_color = sampledColor * (1-weight) + total_color * weight;
+        imageStore(imgOutput, pixelCoord, new_color);
     }
 }
