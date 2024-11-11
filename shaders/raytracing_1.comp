@@ -1,0 +1,85 @@
+#version 450
+
+layout(set = 0, binding = 0) uniform UniformBufferObject {
+    mat4 viewMatrix;
+    mat4 inverseViewMatrix;
+    mat4 inverseProjectionMatrix;
+    int sphereCount;
+    int frameIndex;
+};
+
+struct Sphere {
+    vec3 center;
+    vec3 color;
+    float radius;
+};
+
+layout(set=0, binding = 1) readonly buffer SpheresSSBOIn {
+    Sphere spheresIn[];
+};
+
+layout(set=0, binding = 2) uniform sampler2D imgInput;
+layout(set=0, binding = 3, rgba32f) writeonly uniform image2D imgOutput;
+
+struct Ray {
+    vec3 origin;
+    vec3 direction;
+};
+
+struct HitPayload {
+    float hitDistance;
+    vec3 worldSpacePosition;
+    vec3 worldNormal;
+    int sphereIndex;
+};
+
+layout (local_size_x = 16, local_size_y = 16, local_size_z = 1) in;
+
+uint PCG_Hash(inout uint seed) {
+    seed = seed * 747796405 + 2891336453;
+    uint word = ((seed >> ((seed >> 28) + 4)) ^ seed) * 277803737;
+    return (word >> 22) ^ word;
+}
+
+uint lcg(inout uint seed) {
+    uint LCG_A = 1664525u;
+    uint LCG_C = 1013904223u;
+    seed       = (LCG_A * seed + LCG_C);
+    return seed & 0x00FFFFFF;
+}
+
+float RandomFloat(inout uint seed) {
+    seed = PCG_Hash(seed);
+    return float(seed)/4294967295.0;
+}
+
+float hash11(inout float p) {
+    p = fract(p * .1031);
+    p *= p + 33.33;
+    p *= p + p;
+    return fract(p);
+}
+
+float RandomValueNormalDistribution(inout uint seed) {
+    // Thanks to https://stackoverflow.com/a/6178290
+    float theta = 2 * 3.1415926 * RandomFloat(seed);
+    float rho = sqrt(-2 * log(RandomFloat(seed)));
+    return rho * cos(theta);
+}
+
+
+vec3 InUnitSphere(inout uint seed) {
+    return normalize(vec3(
+            RandomValueNormalDistribution(seed), 
+            RandomValueNormalDistribution(seed), 
+            RandomValueNormalDistribution(seed)));
+}
+
+void main() {
+    ivec2 pixelCoord = ivec2(gl_GlobalInvocationID.xy);
+    vec2 resolution = vec2(imageSize(imgOutput));
+
+    uint seed = uint(pixelCoord.x + pixelCoord.y * resolution.x) * frameIndex;
+    vec4 total_color = vec4(InUnitSphere(seed), 1.0);
+    imageStore(imgOutput, pixelCoord, total_color);
+}

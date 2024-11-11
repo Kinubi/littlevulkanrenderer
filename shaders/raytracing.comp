@@ -34,7 +34,7 @@ struct Hit {
     int sphereIndex;
 };
 
-vec3 emissionPower = vec3(15.0, 0.0, 0.0);
+vec3 emissionPower = vec3(25.0, 0.0, 0.0);
 const float SPHERE_JITTER_FACTOR = 0.01;
 
 layout (local_size_x = 16, local_size_y = 16, local_size_z = 1) in;
@@ -50,7 +50,7 @@ Hit closestHit(Ray ray, float hitDistance, int sphereIndex) {
 
     Sphere closestSphere = spheresIn[sphereIndex];
 
-    payload.worldPosition = ray.origin  + ray.direction * hitDistance;
+    payload.worldPosition = ray.origin + ray.direction * hitDistance;
     payload.worldNormal = normalize(payload.worldPosition - closestSphere.center);
 
     return payload;
@@ -71,7 +71,7 @@ Hit traceRay(Ray ray) {
         } else {
             float t0 = (-b - sqrt(discriminant)) / (2.0 * a);
             float t1 = (-b + sqrt(discriminant)) / (2.0 * a);
-            float t = (t0 < t1 && t0 > 0.0001) ? t0 : t1; 
+            float t = (t0 < (t1 + 0.0001) && t0 > 0.0001) ? t0 : t1; 
             if (t < hitDistance) {
                 hitDistance = t;
                 closestSphere = i;
@@ -85,95 +85,114 @@ Hit traceRay(Ray ray) {
 }
 
 uint PCG_Hash(uint seed) {
-    uint state = seed * 747796405u + 2891336453u;
-    uint word = ((state >> ((state >> 28u) + 4u)) ^ state) * 277803737u;
-    return (word >> 22u) ^ word;
+    uint state = seed * 747796405 + 2891336453;
+    uint word = ((state >> ((state >> 28) + 4)) ^ state) * 277803737;
+    return (word >> 22) ^ word;
 }
 
-float RandomFloat(out uint seed) {
+uint lcg(inout uint seed) {
+    uint LCG_A = 1664525;
+    uint LCG_C = 1013904223;
+    seed       = (LCG_A * seed + LCG_C);
+    return seed & 0x00FFFFFF;
+}
+
+float RandomFloat(inout uint seed) {
     seed = PCG_Hash(seed);
-    return float(seed)/float(4294967295);
+    return float(seed)/4294967295.0;
 }
 
-float RandomValueNormalDistribution(out uint seed) {
+
+
+float RandomValueNormalDistribution(inout uint seed) {
     // Thanks to https://stackoverflow.com/a/6178290
     float theta = 2 * 3.1415926 * RandomFloat(seed);
-    float rho = sqrt(-2 * log(RandomFloat(seed)));
+    float rho = sqrt(-2 * log(1-RandomFloat(seed)));
     return rho * cos(theta);
 }
 
-vec3 InUnitSphere(out uint seed) {
+float hash11(inout float p) {
+    p = fract(p * .1031);
+    p *= p + 33.33;
+    p *= p + p;
+    return fract(p);
+}
+
+
+vec3 InUnitSphere(inout uint seed) {
     return normalize(vec3(
-            RandomFloat(seed) * 2.0f - 1.0f, 
-            RandomFloat(seed) * 2.0f - 1.0f, 
-            RandomFloat(seed) * 2.0f - 1.0f));
+            RandomFloat(seed) *2.0 - 1.0, 
+            RandomFloat(seed)*2.0 - 1.0, 
+            RandomFloat(seed)*2.0 - 1.0));
 }
 
 vec3 calculateSkyColor(vec3 direction) {
-    return vec3(0.3, 0.5, 0.4);
+    return vec3(0.3f, 0.35f, 0.45f);
 }
 
 vec4 calculateLightContribution(Ray ray, uint seed) {
     vec3 contribution = vec3(1.0);
     vec4 light = vec4(0.0);
-    Ray outGoingRay = ray;
 
-    int numBounces = 15;
+    int numBounces = 10;
 
     for (int bounce = 0; bounce < numBounces; bounce++) {
-        seed += bounce;
-        Hit hit = traceRay(outGoingRay);
-        float isSpecular = RandomFloat(seed);
+
+        Hit hit = traceRay(ray);
+        float isSpecular = RandomFloat(seed) < 0.5 ? 1.0 : 0.0;
         if (hit.hitDistance < 0.0f) {
-            vec3 skyColor = calculateSkyColor(outGoingRay.direction);
-            light += vec4(contribution, 1.0f) * vec4(skyColor, 1.0);
+            vec3 skyColor = calculateSkyColor(ray.direction);
+            light += vec4(contribution, 1.0) * vec4(skyColor, 1.0);
             break;
         }
         Sphere sphere = spheresIn[hit.sphereIndex];
-        contribution *= sphere.color;
         light += vec4(emissionPower[hit.sphereIndex] * sphere.color * contribution, 1.0);
-        outGoingRay.origin = hit.worldPosition;
+        contribution *= sphere.color;
+        ray.origin = hit.worldPosition;
         vec3 diffuseDir = normalize(hit.worldNormal + InUnitSphere(seed));
         vec3 specularDir = reflect(ray.direction, hit.worldNormal);
-        outGoingRay.direction = normalize(mix(diffuseDir, specularDir, isSpecular));
+        ray.direction = normalize(mix(diffuseDir, specularDir, isSpecular));
     }
 
     return light;
 }
 
+
 void main() {
     ivec2 pixelCoord = ivec2(gl_GlobalInvocationID.xy);
     vec2 resolution = vec2(imageSize(imgOutput));
-    uint seed = uint(pixelCoord.x + pixelCoord.y) * uint(resolution.x);
+    uint seed = uint(pixelCoord.x/resolution.x + uint(pixelCoord.y/resolution.y * resolution.x));
 
     Ray ray;
     vec2 uv = (pixelCoord / resolution) * 2.0 - 1.0;
 
-    vec4 clipSpacePos = vec4(uv, -1.0, 1.0);
-    vec4 viewSpacePos = inverseProjectionMatrix * clipSpacePos;
-    viewSpacePos /= viewSpacePos.w;
-    vec4 worldSpacePos = inverseViewMatrix * viewSpacePos;
+    ray.origin = inverseViewMatrix[3].xyz;
+    vec4 target = inverseProjectionMatrix * vec4(uv, 1.0, 1.0);
+    ray.direction = normalize((inverseViewMatrix * target)).xyz;
 
-    ray.origin = vec3(inverseViewMatrix[3]);
-    ray.direction = normalize(worldSpacePos.xyz - ray.origin);
-
-    int numRays = 200;
+    int numRays = 500;
     vec4 total_color = vec4(0.0);
+
+    
 
     seed *= frameIndex;
 
     for (int rayNum = 0; rayNum < numRays; rayNum++) {
+
         total_color += calculateLightContribution(ray, seed);
     }
     total_color /= numRays;
 
     vec4 sampledColor = imageLoad(imgInput, pixelCoord);
 
-    if (frameIndex == 0) {
-        imageStore(imgOutput, pixelCoord, total_color);
-    } else {
-        float weight = 1.0 / (frameIndex);
-        vec4 new_color = clamp(sampledColor * (1 - weight) + total_color * weight, 0, 1);
+    total_color = vec4(pow(total_color.rgb, vec3(1.0 / 2.2)), total_color.a);
+    if (frameIndex > 1) {
+        float weight = float(1.0 / float(frameIndex + 1));
+        vec4 new_color = sampledColor * (1 - weight) + total_color * weight;
         imageStore(imgOutput, pixelCoord, new_color);
+        
+    } else {
+        imageStore(imgOutput, pixelCoord, total_color);
     }
+
 }
