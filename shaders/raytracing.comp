@@ -34,7 +34,7 @@ struct Hit {
     int sphereIndex;
 };
 
-vec3 emissionPower = vec3(2.0, 0.0, 0.0);
+vec3 emissionPower = vec3(15.0, 0.0, 0.0);
 const float SPHERE_JITTER_FACTOR = 0.01;
 
 layout (local_size_x = 16, local_size_y = 16, local_size_z = 1) in;
@@ -71,7 +71,7 @@ Hit traceRay(Ray ray) {
         } else {
             float t0 = (-b - sqrt(discriminant)) / (2.0 * a);
             float t1 = (-b + sqrt(discriminant)) / (2.0 * a);
-            float t = (t0 < t1 && t0 > 0.0) ? t0 : t1; 
+            float t = (t0 < t1 && t0 > 0.0001) ? t0 : t1; 
             if (t < hitDistance) {
                 hitDistance = t;
                 closestSphere = i;
