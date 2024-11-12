@@ -36,7 +36,10 @@ class Texture {
 
 	void updateDescriptor();
 	void transitionLayout(
-		VkCommandBuffer commandBuffer, VkImageLayout oldLayout, VkImageLayout newLayout);
+		VkCommandBuffer commandBuffer,
+		VkImageLayout oldLayout,
+		VkImageLayout newLayout,
+		bool before);
 
 	static std::unique_ptr<Texture> createTextureFromFile(
 		Device &device, const std::string &filepath);

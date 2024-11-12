@@ -76,6 +76,7 @@ GENERATED += $(OBJDIR)/model.o
 GENERATED += $(OBJDIR)/particle_system.o
 GENERATED += $(OBJDIR)/pipeline.o
 GENERATED += $(OBJDIR)/point_light_system.o
+GENERATED += $(OBJDIR)/ray_tracing_system.o
 GENERATED += $(OBJDIR)/renderer.o
 GENERATED += $(OBJDIR)/shader.o
 GENERATED += $(OBJDIR)/simplerendersystem.o
@@ -96,6 +97,7 @@ OBJECTS += $(OBJDIR)/model.o
 OBJECTS += $(OBJDIR)/particle_system.o
 OBJECTS += $(OBJDIR)/pipeline.o
 OBJECTS += $(OBJDIR)/point_light_system.o
+OBJECTS += $(OBJDIR)/ray_tracing_system.o
 OBJECTS += $(OBJDIR)/renderer.o
 OBJECTS += $(OBJDIR)/shader.o
 OBJECTS += $(OBJDIR)/simplerendersystem.o
@@ -211,6 +213,9 @@ $(OBJDIR)/particle_system.o: src/shaders/systems/particle_system.cpp
 	@echo "$(notdir $<)"
 	$(SILENT) $(CXX) $(ALL_CXXFLAGS) $(FORCE_INCLUDE) -o "$@" -MF "$(@:%.o=%.d)" -c "$<"
 $(OBJDIR)/point_light_system.o: src/shaders/systems/point_light_system.cpp
+	@echo "$(notdir $<)"
+	$(SILENT) $(CXX) $(ALL_CXXFLAGS) $(FORCE_INCLUDE) -o "$@" -MF "$(@:%.o=%.d)" -c "$<"
+$(OBJDIR)/ray_tracing_system.o: src/shaders/systems/ray_tracing_system.cpp
 	@echo "$(notdir $<)"
 	$(SILENT) $(CXX) $(ALL_CXXFLAGS) $(FORCE_INCLUDE) -o "$@" -MF "$(@:%.o=%.d)" -c "$<"
 $(OBJDIR)/simplerendersystem.o: src/shaders/systems/simplerendersystem.cpp

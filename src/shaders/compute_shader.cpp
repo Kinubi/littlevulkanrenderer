@@ -5,8 +5,11 @@
 namespace lvr {
 
 ComputeShader::ComputeShader(
-	Device& device, VkRenderPass renderPass, std::vector<std::string> filePaths)
-	: device(device), filePaths(filePaths) {
+	Device& device,
+	VkRenderPass renderPass,
+	std::vector<std::string> filePaths,
+	std::unique_ptr<DescriptorSetLayout> computeShaderLayout)
+	: device(device), filePaths(filePaths), computeShaderLayout(std::move(computeShaderLayout)) {
 	createPipelineLayout();
 	createPipeline(renderPass);
 }
@@ -16,24 +19,10 @@ ComputeShader::~ComputeShader() {
 }
 
 void ComputeShader::dispatchComputeShader(
-	std::vector<std::unique_ptr<Buffer>>& ubos,
-	FrameInfo frameInfo,
-	VkCommandBuffer computeCommandBuffer) {
-	uint32_t frameIndex = frameInfo.frameIndex;
-
+	VkCommandBuffer computeCommandBuffer,
+	VkDescriptorSet computeDescriptorSet,
+	glm::vec2 workGroupCount) {
 	computePipeline->bindCompute(computeCommandBuffer);
-
-	VkDescriptorSet computeDescriptorSet;
-	auto bufferInfoubo = ubos[frameIndex]->descriptorInfo();
-	auto bufferInfoLastFrame =
-		shaderStorageBuffers[(frameIndex - 1) % SwapChain::MAX_FRAMES_IN_FLIGHT]->descriptorInfo();
-	auto bufferInfoCurrentFrame = shaderStorageBuffers[frameIndex]->descriptorInfo();
-
-	DescriptorWriter(*computeShaderLayout, frameInfo.frameDescriptorPool)
-		.writeBuffer(0, &bufferInfoubo)
-		.writeBuffer(1, &bufferInfoLastFrame)
-		.writeBuffer(2, &bufferInfoCurrentFrame)
-		.build(computeDescriptorSet);
 
 	vkCmdBindDescriptorSets(
 		computeCommandBuffer,
@@ -45,17 +34,10 @@ void ComputeShader::dispatchComputeShader(
 		0,
 		nullptr);
 
-	vkCmdDispatch(computeCommandBuffer, 32, 1, 1);
+	vkCmdDispatch(computeCommandBuffer, workGroupCount.x, workGroupCount.y, 1);
 }
 
 void ComputeShader::createPipelineLayout() {
-	computeShaderLayout =
-		DescriptorSetLayout::Builder(device)
-			.addBinding(0, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, VK_SHADER_STAGE_COMPUTE_BIT)
-			.addBinding(1, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, VK_SHADER_STAGE_COMPUTE_BIT)
-			.addBinding(2, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, VK_SHADER_STAGE_COMPUTE_BIT)
-			.build();
-
 	std::vector<VkDescriptorSetLayout> descriptorSetLayouts{
 		computeShaderLayout->getDescriptorSetLayout()};
 

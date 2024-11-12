@@ -1,0 +1,213 @@
+#version 450
+#define FLT_MAX 3.402823466e+38
+
+layout(set = 0, binding = 0) uniform UniformBufferObject {
+    mat4 viewMatrix;
+    mat4 inverseViewMatrix;
+    mat4 inverseProjectionMatrix;
+    int sphereCount;
+    int frameIndex;
+};
+
+struct Sphere {
+    vec3 center;
+    vec3 color;
+    float radius;
+};
+
+layout(set=0, binding = 1) readonly buffer SpheresSSBOIn {
+    Sphere spheresIn[];
+};
+
+layout(set=0, binding = 2, rgba32f) readonly uniform image2D imgInput;
+layout(set=0, binding = 3, rgba32f) writeonly uniform image2D imgOutput;
+
+struct Ray {
+    vec3 origin;
+    vec3 direction;
+};
+
+struct Hit {
+    float hitDistance;
+    vec3 worldPosition;
+    vec3 worldNormal;
+    int sphereIndex;
+};
+
+vec4 emissionPower = vec4(3.0, 0.0, 0.0, 0.0);
+vec4 reflectivity = vec4(0.0, 1.0, 0.0, 0.4);
+const float SPHERE_JITTER_FACTOR = 0.01;
+
+layout (local_size_x = 16, local_size_y = 16, local_size_z = 1) in;
+
+Hit miss(Ray ray) {
+    return Hit(-1.0, vec3(0), vec3(0), 0);
+}
+
+Hit closestHit(Ray ray, float hitDistance, int sphereIndex) {
+    Hit payload;
+    payload.hitDistance = hitDistance;
+    payload.sphereIndex = sphereIndex;
+
+    Sphere closestSphere = spheresIn[sphereIndex];
+
+    payload.worldPosition = ray.origin  + ray.direction * hitDistance;
+    payload.worldNormal = normalize(payload.worldPosition - closestSphere.center);
+
+    return payload;
+}
+
+Hit traceRay(Ray ray) {
+    int closestSphere = -1;
+    float hitDistance = FLT_MAX;
+
+    for (int i = 0; i < sphereCount; i++) {
+        Sphere sphere = spheresIn[i];
+        vec3 oc = ray.origin - sphere.center;
+        float a = dot(ray.direction, ray.direction);
+        float b = 2.0 * dot(oc, ray.direction);
+        float c = dot(oc, oc) - sphere.radius * sphere.radius;
+        float discriminant = b * b - 4.0 * a * c;
+
+        if (discriminant < 0.0) {
+            continue;
+        }
+
+        float t0 = (-b - sqrt(discriminant)) / (2.0 * a);
+        float t1 = (-b + sqrt(discriminant)) / (2.0 * a);
+        float t = t0;
+
+        if (t < hitDistance && t >= 0.0) {
+            hitDistance = t;
+            closestSphere = i;
+        }
+    }
+
+    if (closestSphere < 0) {
+        return miss(ray);
+    }
+
+    return closestHit(ray, hitDistance, closestSphere);
+
+}
+
+uint PCG_Hash(uint seed) {
+    uint state = seed * 747796405u + 2891336453u;
+    uint word = ((state >> ((state >> 28u) + 4u)) ^ state) * 277803737u;
+    return (word >> 22u) ^ word;
+}
+
+float RandomFloat(inout uint seed) {
+    seed = PCG_Hash(seed);
+    return float(seed)/4294967295.0;
+}
+
+float RandomValueNormalDistribution(inout uint seed) {
+    // Thanks to https://stackoverflow.com/a/6178290
+    float theta = 2 * 3.1415926 * RandomFloat(seed);
+    float rho = sqrt(-2 * log(RandomFloat(seed)));
+    return rho * cos(theta);
+}
+
+vec3 InUnitSphere(inout uint seed) {
+    return normalize(vec3(
+            RandomFloat(seed) * 2.0f - 1.0f, 
+            RandomFloat(seed) * 2.0f - 1.0f, 
+            RandomFloat(seed) * 2.0f - 1.0f));
+}
+
+vec3 calculateSkyColor(vec3 direction) {
+    
+    float t = 0.5 * (direction.y + 1.0);
+    vec3 skyColor = mix(vec3(1.0, 1.0, 1.0), vec3(0.5, 0.7, 1.0), t);
+    vec3 groundColor = vec3(0.8, 0.8, 0.8);
+    return mix(groundColor, skyColor, smoothstep(-1.0, 1.0, direction.y));
+    
+}
+
+vec4 calculateLightContribution(Ray ray, inout uint seed) {
+    // Initialize the contribution and light variables
+    vec3 contribution = vec3(1.0);
+    vec4 light = vec4(0.0);
+    Ray outGoingRay = ray;
+
+    int numBounces = 15;
+
+    // Loop through the number of bounces
+    for (int bounce = 0; bounce < numBounces; bounce++) {
+        seed += bounce;
+        Hit hit = traceRay(outGoingRay);
+        float isSpecular = RandomFloat(seed) >= 0.0 ? 1.0 : 0.0;
+        
+        // If no hit, add sky color and break
+        if (hit.hitDistance < 0.0f) {
+            vec3 skyColor = calculateSkyColor(outGoingRay.direction);
+            light += vec4(contribution, 1.0f) * vec4(skyColor, 1.0);
+            break;
+        }
+        
+        // Calculate light contribution from the hit
+        Sphere sphere = spheresIn[hit.sphereIndex];
+        light += vec4(emissionPower[hit.sphereIndex] * sphere.color * contribution, 1.0);
+        contribution *= sphere.color;
+        
+        // Update the outgoing ray
+        outGoingRay.origin = hit.worldPosition;
+        vec3 diffuseDir = normalize(hit.worldNormal + InUnitSphere(seed));
+        vec3 specularDir = reflect(ray.direction, hit.worldNormal);
+        outGoingRay.direction = normalize(mix(diffuseDir, specularDir, isSpecular * reflectivity[hit.sphereIndex]));
+    }
+
+    return light;
+}
+
+
+// Function to initialize the ray
+Ray initializeRay(ivec2 pixelCoord, vec2 resolution) {
+    Ray ray;
+    vec2 uv = (pixelCoord / resolution) * 2.0 - 1.0;
+
+    vec4 clipSpacePos = vec4(uv, -1.0, 1.0);
+    vec4 viewSpacePos = inverseProjectionMatrix * clipSpacePos;
+    viewSpacePos /= viewSpacePos.w;
+    vec4 worldSpacePos = inverseViewMatrix * viewSpacePos;
+
+    ray.origin = vec3(inverseViewMatrix[3]);
+    ray.direction = normalize(worldSpacePos.xyz - ray.origin);
+
+    return ray;
+}
+
+// Function to compute the final color
+vec4 computeFinalColor(Ray ray, uint seed, int numRays) {
+    vec4 total_color = vec4(0.0);
+    for (int rayNum = 0; rayNum < numRays; rayNum++) {
+        seed += rayNum;
+        total_color += calculateLightContribution(ray, seed);
+    }
+    return total_color / float(numRays);
+}
+
+// Main function
+void main() {
+    ivec2 pixelCoord = ivec2(gl_GlobalInvocationID.xy);
+    vec2 resolution = vec2(imageSize(imgOutput));
+    uint seed = uint(pixelCoord.x + resolution.y) * uint(pixelCoord.y + resolution.x);
+
+    Ray ray = initializeRay(pixelCoord, resolution);
+
+    int numRays = 30;
+    seed *= frameIndex;
+
+    vec4 total_color = computeFinalColor(ray, seed, numRays);
+
+    vec4 sampledColor = imageLoad(imgInput, pixelCoord);
+
+    if (frameIndex == 0) {
+        imageStore(imgOutput, pixelCoord, total_color);
+    } else {
+        float weight = 1.0 / float(frameIndex + 1);
+        vec4 new_color = clamp(sampledColor * (1.0 - weight) + total_color * weight, 0.0, 1.0);
+        imageStore(imgOutput, pixelCoord, new_color);
+    }
+}
