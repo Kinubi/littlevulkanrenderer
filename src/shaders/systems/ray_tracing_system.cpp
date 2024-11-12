@@ -156,9 +156,9 @@ void RayTracingSystem::createSpheres() {
 
 	{
 		Sphere sphere;
-		sphere.center = {0.0f, 0.0f, 0.0f};
-		sphere.radius = 1.0f;
-		sphere.color = glm::vec3(rndDist(rndEngine), rndDist(rndEngine), rndDist(rndEngine));
+		sphere.center = {0.0f, 11.0f, -5.0f};
+		sphere.radius = 10.0f;
+		sphere.color = glm::vec3(0.82f, 0.5f, 0.2f);
 		spheres.emplace_back(sphere);
 	}
 
@@ -166,7 +166,7 @@ void RayTracingSystem::createSpheres() {
 		Sphere sphere;
 		sphere.center = {2.0f, 0.0f, 0.0f};
 		sphere.radius = 1.0f;
-		sphere.color = glm::vec3(rndDist(rndEngine), rndDist(rndEngine), rndDist(rndEngine));
+		sphere.color = glm::vec3(0.2f, 0.3f, 1.0f);
 		spheres.emplace_back(sphere);
 	}
 
@@ -174,7 +174,7 @@ void RayTracingSystem::createSpheres() {
 		Sphere sphere;
 		sphere.center = {0.0f, -101.0f, 0.0f};
 		sphere.radius = 100.0f;
-		sphere.color = glm::vec3(rndDist(rndEngine), rndDist(rndEngine), rndDist(rndEngine));
+		sphere.color = glm::vec3(1.0f, 0.0f, 1.0f);
 		spheres.emplace_back(sphere);
 	}
 }
