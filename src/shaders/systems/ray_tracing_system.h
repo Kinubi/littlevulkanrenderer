@@ -13,7 +13,7 @@
 #include "pipeline.h"
 
 namespace lvr {
-const int32_t SPHERE_COUNT = 3;
+const int32_t SPHERE_COUNT = 4;
 struct Sphere {
 	alignas(16) glm::vec3 center{};
 	alignas(16) glm::vec3 color{};

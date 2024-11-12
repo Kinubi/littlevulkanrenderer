@@ -177,6 +177,14 @@ void RayTracingSystem::createSpheres() {
 		sphere.color = glm::vec3(1.0f, 0.0f, 1.0f);
 		spheres.emplace_back(sphere);
 	}
+
+	{
+		Sphere sphere;
+		sphere.center = {0.0f, 0.0f, 0.0f};
+		sphere.radius = 1.0f;
+		sphere.color = glm::vec3(1.0f, 1.0f, 1.0f);
+		spheres.emplace_back(sphere);
+	}
 }
 
 void RayTracingSystem::createImage() {
