@@ -252,23 +252,23 @@ void RayTracingSystem::createSpheres() {
 		spheres.emplace_back(sphere);
 	}
 
-	{
-		Sphere sphere;
-		sphere.center = {-2.0f, 0.0f, 0.0f};
-		sphere.radius = 0.9f;
+	// {
+	// 	Sphere sphere;
+	// 	sphere.center = {-2.0f, 0.0f, 0.0f};
+	// 	sphere.radius = 0.9f;
 
-		MaterialAsset materialAsset;
-		materialAsset.setAlbedo(glm::vec3(1.0f, 1.0f, 1.0f));
-		materialAsset.setEmissiveColor(glm::vec3(1.0f, 1.0f, 1.0f));
-		materialAsset.setEmissiveStrength(0.0f);
-		materialAsset.setRoughness(0.0f);
-		materialAsset.setMetalness(0.5f);
-		materialAsset.setRefractiveIndex(1.0f / 1.5f);
-		materialAsset.setTransparent(1);
+	// 	MaterialAsset materialAsset;
+	// 	materialAsset.setAlbedo(glm::vec3(1.0f, 1.0f, 1.0f));
+	// 	materialAsset.setEmissiveColor(glm::vec3(1.0f, 1.0f, 1.0f));
+	// 	materialAsset.setEmissiveStrength(0.0f);
+	// 	materialAsset.setRoughness(0.0f);
+	// 	materialAsset.setMetalness(0.5f);
+	// 	materialAsset.setRefractiveIndex(1.0f / 1.5f);
+	// 	materialAsset.setTransparent(1);
 
-		sphere.materialID = materialManager.create(materialAsset);
-		spheres.emplace_back(sphere);
-	}
+	// 	sphere.materialID = materialManager.create(materialAsset);
+	// 	spheres.emplace_back(sphere);
+	// }
 }
 
 void RayTracingSystem::createImage() {

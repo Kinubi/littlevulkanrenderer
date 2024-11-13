@@ -52,7 +52,7 @@ struct Hit {
 
 vec4 emissionPower = vec4(3.0, 0.0, 0.0, 0.0);
 vec4 reflectivity = vec4(0.0, 1.0, 0.0, 0.4);
-const float SPHERE_JITTER_FACTOR = 0.01;
+const float SPHERE_JITTER_FACTOR = 0.1;
 
 layout (local_size_x = 16, local_size_y = 16, local_size_z = 1) in;
 
@@ -93,7 +93,8 @@ Hit traceRay(Ray ray) {
 
         float t0 = (-b - sqrt(discriminant)) / (2.0 * a);
         float t1 = (-b + sqrt(discriminant)) / (2.0 * a);
-        float t = t0;
+        float t = (t0 < t1) ? t0 : t1;
+        //float t = t0;
 
         if (t < hitDistance && t >= 0.0) {
             hitDistance = t;
@@ -156,7 +157,7 @@ vec4 calculateLightContribution(Ray ray, inout uint seed) {
     vec4 light = vec4(0.0);
     Ray outGoingRay = ray;
 
-    int numBounces = 10;
+    int numBounces = 50;
 
     // Loop through the number of bounces
     for (int bounce = 0; bounce < numBounces; bounce++) {
@@ -199,15 +200,23 @@ vec4 calculateLightContribution(Ray ray, inout uint seed) {
 }
 
 
+vec3 sample_square(inout uint seed) {
+    // Returns the vector to a random point in the [-.5,-.5]-[+.5,+.5] unit square.
+    return vec3(RandomFloat(seed) - 0.5, RandomFloat(seed) - 0.5, 0);
+}
+
+
 // Function to initialize the ray
-Ray initializeRay(ivec2 pixelCoord, vec2 resolution) {
+Ray initializeRay(ivec2 pixelCoord, vec2 resolution, inout uint seed) {
     Ray ray;
-    vec2 uv = (pixelCoord / resolution) * 2.0 - 1.0;
+    vec2 pixelCoordfloat = vec2(pixelCoord) + sample_square(seed).xy;
+    vec2 uv = (pixelCoordfloat / resolution) * 2.0 - 1.0;
 
     vec4 clipSpacePos = vec4(uv, -1.0, 1.0);
     vec4 viewSpacePos = inverseProjectionMatrix * clipSpacePos;
     viewSpacePos /= viewSpacePos.w;
     vec4 worldSpacePos = inverseViewMatrix * viewSpacePos;
+
 
     ray.origin = vec3(inverseViewMatrix[3]);
     ray.direction = normalize(worldSpacePos.xyz - ray.origin);
@@ -216,10 +225,11 @@ Ray initializeRay(ivec2 pixelCoord, vec2 resolution) {
 }
 
 // Function to compute the final color
-vec4 computeFinalColor(Ray ray, uint seed, int numRays) {
+vec4 computeFinalColor(ivec2 pixelCoord, vec2 resolution, uint seed, int numRays) {
+    Ray ray = initializeRay(pixelCoord, resolution, seed);
     vec4 total_color = vec4(0.0);
     for (int rayNum = 0; rayNum < numRays; rayNum++) {
-        //seed += rayNum;
+        seed += rayNum;
         total_color += calculateLightContribution(ray, seed);
     }
     return total_color / float(numRays);
@@ -231,12 +241,12 @@ void main() {
     vec2 resolution = vec2(imageSize(imgOutput));
     uint seed = uint(pixelCoord.x + resolution.y) * uint(pixelCoord.y + resolution.x);
 
-    Ray ray = initializeRay(pixelCoord, resolution);
 
-    int numRays = 50;
+
+    int numRays = 300;
     seed *= frameIndex;
 
-    vec4 total_color = computeFinalColor(ray, seed, numRays);
+    vec4 total_color = computeFinalColor(pixelCoord, resolution, seed, numRays);
 
     vec4 sampledColor = imageLoad(imgInput, pixelCoord);
 
