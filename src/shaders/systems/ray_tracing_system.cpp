@@ -172,8 +172,8 @@ void RayTracingSystem::createSpheres() {
 		sphere.radius = 10.0f;
 
 		MaterialAsset materialAsset;
-		materialAsset.setAlbedo(glm::vec3(1.0f, 1.0f, 1.0f));
-		materialAsset.setEmissiveColor(glm::vec3(1.0f, 1.0f, 1.0f));
+		materialAsset.setAlbedo(glm::vec3(0.3f, 0.6f, 0.3f));
+		materialAsset.setEmissiveColor(glm::vec3(0.3f, 0.6f, 0.3f));
 		materialAsset.setEmissiveStrength(3.0f);
 		materialAsset.setRoughness(1.0f);
 		materialAsset.setMetalness(0.0f);

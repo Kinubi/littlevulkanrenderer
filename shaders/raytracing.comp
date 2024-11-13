@@ -46,24 +46,45 @@ struct Hit {
     float hitDistance;
     vec3 worldPosition;
     vec3 worldNormal;
-    int sphereIndex;
+    bool sphere;
+    int itemIndex;
     bool frontFace;
 };
 
-vec4 emissionPower = vec4(3.0, 0.0, 0.0, 0.0);
-vec4 reflectivity = vec4(0.0, 1.0, 0.0, 0.4);
-const float SPHERE_JITTER_FACTOR = 0.1;
+
+
 
 layout (local_size_x = 16, local_size_y = 16, local_size_z = 1) in;
 
+struct Triangle {
+    vec3 positions[3];
+    int materialIndex;
+};
+
+Triangle triangle1 = Triangle(vec3[](
+        vec3(-0.5, -1.0, 2.0),
+        vec3(2.5, -1.0, 2.0),
+        vec3(2.5,  2.0, 2.0)), 2);
+
+Triangle triangle2 = Triangle(vec3[](
+        vec3(2.5, 2.0, 2.0),
+        vec3(-0.5,  2.0, 2.0),
+        vec3(-0.5,-1.0, 2.0)), 2);
+
+Triangle triangles[] = Triangle[](triangle1, triangle2);
+
+
+
+
 Hit miss(Ray ray) {
-    return Hit(-1.0, vec3(0), vec3(0), 0, false);
+    return Hit(-1.0, vec3(0), vec3(0), false, 0, false);
 }
 
 Hit closestHit(Ray ray, float hitDistance, int sphereIndex) {
     Hit payload;
     payload.hitDistance = hitDistance;
-    payload.sphereIndex = sphereIndex;
+    payload.sphere = true;
+    payload.itemIndex = sphereIndex;
 
     Sphere closestSphere = spheres[sphereIndex];
 
@@ -74,11 +95,8 @@ Hit closestHit(Ray ray, float hitDistance, int sphereIndex) {
     return payload;
 }
 
-
-Hit traceRay(Ray ray) {
+Hit checkSpheres(Ray ray, inout float hitDistance) {
     int closestSphere = -1;
-    float hitDistance = FLT_MAX;
-
     for (int i = 0; i < sphereCount; i++) {
         Sphere sphere = spheres[i];
         vec3 oc = ray.origin - sphere.center;
@@ -99,14 +117,84 @@ Hit traceRay(Ray ray) {
         if (t < hitDistance && t >= 0.0) {
             hitDistance = t;
             closestSphere = i;
-        }
+            }
     }
 
     if (closestSphere < 0) {
         return miss(ray);
+    
     }
 
     return closestHit(ray, hitDistance, closestSphere);
+        
+}
+
+
+
+Hit checkTriangles(Ray ray, float hitDistance) {
+    int closestTriangle = -1;
+    for (int i = 0; i < triangles.length(); i++) {
+        Triangle triangle = triangles[i];
+        vec3 v0v1 = triangle.positions[1] - triangle.positions[0];
+        vec3 v0v2 = triangle.positions[2] - triangle.positions[0];
+        vec3 pvec = cross(ray.direction, v0v2);
+        float det = dot(v0v1, pvec);
+
+        if (abs(det) < 1e-8) continue;
+
+        float invDet = 1.0 / det;
+        vec3 tvec = ray.origin - triangle.positions[0];
+        float u = dot(tvec, pvec) * invDet;
+        if (u < 0.0 || u > 1.0) continue;
+
+        vec3 qvec = cross(tvec, v0v1);
+        float v = dot(ray.direction, qvec) * invDet;
+        if (v < 0.0 || u + v > 1.0) continue;
+
+        float t = dot(v0v2, qvec) * invDet;
+        if (t < hitDistance && t >= 0.0) {
+            hitDistance = t;
+            closestTriangle = i;
+        }
+    }
+
+    if (closestTriangle < 0) {
+        return miss(ray);
+    }
+
+    Hit payload;
+    payload.hitDistance = hitDistance;
+    payload.sphere = false;
+    payload.itemIndex = closestTriangle;
+
+    Triangle closestTri = triangles[closestTriangle];
+    vec3 v0v1 = closestTri.positions[1] - closestTri.positions[0];
+    vec3 v0v2 = closestTri.positions[2] - closestTri.positions[0];
+    vec3 normal = normalize(cross(v0v1, v0v2));
+
+    payload.worldPosition = ray.origin + ray.direction * hitDistance;
+    payload.worldNormal = normal;
+    payload.frontFace = dot(ray.direction, normal) < 0.0;
+
+
+    return payload;
+    
+}
+
+
+Hit traceRay(Ray ray) {
+    
+    float hitDistance = FLT_MAX;
+    Hit hitSphere = checkSpheres(ray, hitDistance);
+    if (hitSphere.hitDistance < 0.0) {
+        hitDistance = FLT_MAX;
+    }
+    Hit hitTriangle = checkTriangles(ray, hitDistance);
+    if (hitTriangle.hitDistance < 0.0) {
+        return hitSphere;
+    } else {
+        return hitTriangle;
+    }
 
 }
 
@@ -157,7 +245,7 @@ vec4 calculateLightContribution(Ray ray, inout uint seed) {
     vec4 light = vec4(0.0);
     Ray outGoingRay = ray;
 
-    int numBounces = 50;
+    int numBounces = 10;
 
     // Loop through the number of bounces
     for (int bounce = 0; bounce < numBounces; bounce++) {
@@ -172,16 +260,13 @@ vec4 calculateLightContribution(Ray ray, inout uint seed) {
             break;
         }
         
-        // Calculate light contribution from the hit
-        Sphere sphere = spheres[hit.sphereIndex];
-        float isSpecular = materials[sphere.materialIndex].metalness >= RandomFloat(seed) ? 1.0 : 0.0;
-        light += vec4(materials[sphere.materialIndex].emissiveStrength * materials[sphere.materialIndex].emissiveColor * contribution, 1.0);
-        contribution *= mix(materials[sphere.materialIndex].albedo, vec3(1.0), isSpecular);
-        
         // Update the outgoing ray
+        
+        int materialIndex = hit.sphere ? spheres[hit.itemIndex].materialIndex : triangles[hit.itemIndex].materialIndex;
+        float isSpecular = materials[materialIndex].metalness >= RandomFloat(seed) ? 1.0 : 0.0;
         outGoingRay.origin = hit.worldPosition;
-        if (materials[sphere.materialIndex].isTransparent > 0) {
-            float ri = hit.frontFace ? 1.0 / materials[sphere.materialIndex].refractiveIndex : materials[sphere.materialIndex].refractiveIndex;
+        if (materials[materialIndex].isTransparent > 0) {
+            float ri = hit.frontFace ? 1.0 / materials[materialIndex].refractiveIndex : materials[materialIndex].refractiveIndex;
             float cosTheta = min(dot(-outGoingRay.direction, hit.worldNormal), 1.0);
             float sinTheta = sqrt(1.0 - cosTheta * cosTheta);
             bool cannotRefract = ri * sinTheta > 1.0;
@@ -190,10 +275,18 @@ vec4 calculateLightContribution(Ray ray, inout uint seed) {
             else
                 outGoingRay.direction = refract(outGoingRay.direction, hit.worldNormal, ri);
         } else {
+
             vec3 diffuseDir = normalize(hit.worldNormal + InUnitSphere(seed));
             vec3 specularDir = reflect(ray.direction, hit.worldNormal);
-            outGoingRay.direction = normalize(mix(diffuseDir, specularDir, isSpecular * (1.0 - materials[sphere.materialIndex].roughness)));
+            outGoingRay.direction = normalize(mix(diffuseDir, specularDir, isSpecular * (1.0 - materials[materialIndex].roughness)));
         }
+
+        // Calculate light contribution from the hit
+
+        light += vec4(materials[materialIndex].emissiveStrength * materials[materialIndex].emissiveColor * contribution, 1.0);
+        contribution *= mix(materials[materialIndex].albedo, vec3(1.0), isSpecular);
+        
+
     }
 
     return light;
@@ -243,7 +336,7 @@ void main() {
 
 
 
-    int numRays = 300;
+    int numRays = 50;
     seed *= frameIndex;
 
     vec4 total_color = computeFinalColor(pixelCoord, resolution, seed, numRays);
