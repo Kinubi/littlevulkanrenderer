@@ -6,6 +6,7 @@
 #include <memory>
 #include <vector>
 
+#include "../../materials/material_manager.h"
 #include "../compute_shader.h"
 #include "buffer.h"
 #include "device.h"
@@ -18,6 +19,7 @@ struct Sphere {
 	alignas(16) glm::vec3 center{};
 	alignas(16) glm::vec3 color{};
 	float radius;
+	id_t materialID;
 };
 
 class RayTracingSystem {
@@ -61,6 +63,8 @@ class RayTracingSystem {
 
 	std::unique_ptr<Pipeline> pipeline;
 	VkPipelineLayout pipelineLayout{};
+
+	std::unique_ptr<MaterialManager> materialManager;
 
 	VkExtent3D extent;
 };

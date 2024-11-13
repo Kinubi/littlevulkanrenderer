@@ -13,6 +13,7 @@ struct Sphere {
     vec3 center;
     vec3 color;
     float radius;
+    int materialIndex;
 };
 
 layout(set=0, binding = 1) readonly buffer SpheresSSBOIn {

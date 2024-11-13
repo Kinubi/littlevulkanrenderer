@@ -72,6 +72,8 @@ GENERATED += $(OBJDIR)/device.o
 GENERATED += $(OBJDIR)/gameobject.o
 GENERATED += $(OBJDIR)/keyboard_movement_controller.o
 GENERATED += $(OBJDIR)/main.o
+GENERATED += $(OBJDIR)/material_asset.o
+GENERATED += $(OBJDIR)/material_manager.o
 GENERATED += $(OBJDIR)/model.o
 GENERATED += $(OBJDIR)/particle_system.o
 GENERATED += $(OBJDIR)/pipeline.o
@@ -93,6 +95,8 @@ OBJECTS += $(OBJDIR)/device.o
 OBJECTS += $(OBJDIR)/gameobject.o
 OBJECTS += $(OBJDIR)/keyboard_movement_controller.o
 OBJECTS += $(OBJDIR)/main.o
+OBJECTS += $(OBJDIR)/material_asset.o
+OBJECTS += $(OBJDIR)/material_manager.o
 OBJECTS += $(OBJDIR)/model.o
 OBJECTS += $(OBJDIR)/particle_system.o
 OBJECTS += $(OBJDIR)/pipeline.o
@@ -189,6 +193,12 @@ $(OBJDIR)/keyboard_movement_controller.o: src/keyboard_movement_controller.cpp
 	@echo "$(notdir $<)"
 	$(SILENT) $(CXX) $(ALL_CXXFLAGS) $(FORCE_INCLUDE) -o "$@" -MF "$(@:%.o=%.d)" -c "$<"
 $(OBJDIR)/main.o: src/main.cpp
+	@echo "$(notdir $<)"
+	$(SILENT) $(CXX) $(ALL_CXXFLAGS) $(FORCE_INCLUDE) -o "$@" -MF "$(@:%.o=%.d)" -c "$<"
+$(OBJDIR)/material_asset.o: src/materials/material_asset.cpp
+	@echo "$(notdir $<)"
+	$(SILENT) $(CXX) $(ALL_CXXFLAGS) $(FORCE_INCLUDE) -o "$@" -MF "$(@:%.o=%.d)" -c "$<"
+$(OBJDIR)/material_manager.o: src/materials/material_manager.cpp
 	@echo "$(notdir $<)"
 	$(SILENT) $(CXX) $(ALL_CXXFLAGS) $(FORCE_INCLUDE) -o "$@" -MF "$(@:%.o=%.d)" -c "$<"
 $(OBJDIR)/model.o: src/model.cpp
