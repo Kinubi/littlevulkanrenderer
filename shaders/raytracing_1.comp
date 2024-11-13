@@ -1,4 +1,5 @@
 #version 450
+#define FLT_MAX 3.402823466e+38
 
 layout(set = 0, binding = 0) uniform UniformBufferObject {
     mat4 viewMatrix;
@@ -10,16 +11,30 @@ layout(set = 0, binding = 0) uniform UniformBufferObject {
 
 struct Sphere {
     vec3 center;
-    vec3 color;
     float radius;
+    int materialIndex;
 };
 
-layout(set=0, binding = 1) readonly buffer SpheresSSBOIn {
-    Sphere spheresIn[];
+struct Material {
+	vec3 albedo;
+	vec3 emissiveColor;
+	float emissiveStrength ;
+	float roughness;
+	float metalness;
+	float refractiveIndex;
 };
 
-layout(set=0, binding = 2) uniform sampler2D imgInput;
-layout(set=0, binding = 3, rgba32f) writeonly uniform image2D imgOutput;
+layout(set=0, binding = 1) readonly buffer spheresBuffer {
+    Sphere spheres[];
+};
+
+layout(set=0, binding = 2) readonly buffer materialBuffer {
+    Material materials[];
+};
+
+
+layout(set=0, binding = 3, rgba32f) readonly uniform image2D imgInput;
+layout(set=0, binding = 4, rgba32f) writeonly uniform image2D imgOutput;
 
 struct Ray {
     vec3 origin;
@@ -80,6 +95,6 @@ void main() {
     vec2 resolution = vec2(imageSize(imgOutput));
 
     uint seed = uint(pixelCoord.x + pixelCoord.y * resolution.x) * frameIndex;
-    vec4 total_color = vec4(InUnitSphere(seed), 1.0);
+    vec4 total_color = vec4(RandomFloat(seed), RandomFloat(seed), RandomFloat(seed), 1.0);
     imageStore(imgOutput, pixelCoord, total_color);
 }

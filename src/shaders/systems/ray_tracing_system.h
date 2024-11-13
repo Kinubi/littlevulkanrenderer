@@ -14,10 +14,9 @@
 #include "pipeline.h"
 
 namespace lvr {
-const int32_t SPHERE_COUNT = 4;
+const int32_t SPHERE_COUNT = 6;
 struct Sphere {
 	alignas(16) glm::vec3 center{};
-	alignas(16) glm::vec3 color{};
 	float radius;
 	id_t materialID;
 };
@@ -42,6 +41,7 @@ class RayTracingSystem {
 	RayTracingSystem &operator=(const RayTracingSystem &) = delete;
 
 	void updateUniformBuffers(FrameInfo &frameInfo, int32_t frameIndex);
+	void updateSpherePosition(FrameInfo &frameInfo);
 	VkExtent3D getExtent() { return extent; }
 
    private:
@@ -55,7 +55,7 @@ class RayTracingSystem {
 
 	std::unique_ptr<ComputeShader> computeShader;
 	std::vector<std::unique_ptr<Buffer>> uniformBuffers;
-	std::vector<std::unique_ptr<Buffer>> spheresBuffers;
+	std::unique_ptr<Buffer> sphereBuffer;
 	std::vector<Sphere> spheres;
 
 	std::vector<std::shared_ptr<Texture>> images;
@@ -64,7 +64,8 @@ class RayTracingSystem {
 	std::unique_ptr<Pipeline> pipeline;
 	VkPipelineLayout pipelineLayout{};
 
-	std::unique_ptr<MaterialManager> materialManager;
+	MaterialManager materialManager{device};
+	std::unique_ptr<Buffer> materialBuffer;
 
 	VkExtent3D extent;
 };

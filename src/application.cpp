@@ -157,6 +157,7 @@ void Application::OnUpdate(float dt) {
 			pointLightSystem->update(frameInfo, ubo);
 			// particleSystem->updateUniformBuffers(frameInfo);
 			raytracingSystem->updateUniformBuffers(frameInfo, frameRayIndex);
+			// raytracingSystem->updateSpherePosition(frameInfo);
 
 			uboBuffers[frameIndex]->writeToBuffer(&ubo);
 			uboBuffers[frameIndex]->flush();

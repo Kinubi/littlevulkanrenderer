@@ -32,7 +32,11 @@ class ComputeShader {
 	std::vector<std::unique_ptr<Buffer>> createShaderStorageBuffers(
 		const std::vector<T> computeBufferData);
 	template <typename T>
-	std::vector<T> getShaderStorageBuffers(std::unique_ptr<Buffer> &shaderBuffer);
+	void getShaderStorageBuffer(std::unique_ptr<Buffer> &shaderBuffer, std::vector<T> &bufferData);
+
+	template <typename T>
+	std::unique_ptr<Buffer> createShaderStorageBuffer(const std::vector<T> computeBufferData);
+
 	std::unique_ptr<DescriptorSetLayout> &getComputeShaderLayout() { return computeShaderLayout; }
 
    private:
@@ -40,8 +44,6 @@ class ComputeShader {
 	void createPipeline(VkRenderPass renderPass);
 
 	Device &device;
-
-	uint32_t bufferCount;
 
 	std::unique_ptr<Pipeline> computePipeline;
 	VkPipelineLayout computePipelineLayout{};
@@ -57,7 +59,7 @@ template <typename T>
 std::vector<std::unique_ptr<Buffer>> ComputeShader::createShaderStorageBuffers(
 	const std::vector<T> computeBufferData) {
 	// Create a staging buffer used to upload data to the gpu
-	bufferCount = static_cast<uint32_t>(computeBufferData.size());
+	uint32_t bufferCount = static_cast<uint32_t>(computeBufferData.size());
 	uint32_t bufferItemSize = sizeof(computeBufferData[0]);
 	VkDeviceSize bufferSize = bufferItemSize * bufferCount;
 
@@ -92,8 +94,12 @@ std::vector<std::unique_ptr<Buffer>> ComputeShader::createShaderStorageBuffers(
 }
 
 template <typename T>
-std::vector<T> ComputeShader::getShaderStorageBuffers(std::unique_ptr<Buffer> &shaderBuffer) {
+void ComputeShader::getShaderStorageBuffer(
+	std::unique_ptr<Buffer> &shaderBuffer, std::vector<T> &bufferData) {
 	// Purely for debuggging compute shader
+	uint32_t bufferCount = static_cast<uint32_t>(bufferData.size());
+	uint32_t bufferItemSize = sizeof(bufferData[0]);
+	VkDeviceSize bufferSize = bufferItemSize * bufferCount;
 	Buffer stagingBuffer{
 		device,
 		sizeof(T),
@@ -107,10 +113,47 @@ std::vector<T> ComputeShader::getShaderStorageBuffers(std::unique_ptr<Buffer> &s
 		(VkDeviceSize)(bufferCount * sizeof(T)));
 
 	stagingBuffer.map();
-	std::vector<T> bufferData;
 	bufferData.reserve(bufferCount * sizeof(T));
 	std::vector<T> *ssboBlockPointer = (std::vector<T> *)stagingBuffer.getMappedMemory();
 	memcpy(&bufferData, ssboBlockPointer, sizeof(bufferData));
 	// std::cout << particle.position.x << std::endl;
 }
+
+template <typename T>
+std::unique_ptr<Buffer> ComputeShader::createShaderStorageBuffer(
+	const std::vector<T> computeBufferData) {
+	// Create a staging buffer used to upload data to the gpu
+	uint32_t bufferCount = static_cast<uint32_t>(computeBufferData.size());
+	uint32_t bufferItemSize = sizeof(computeBufferData[0]);
+	VkDeviceSize bufferSize = bufferItemSize * bufferCount;
+
+	Buffer stagingBuffer{
+		device,
+		bufferItemSize,
+		bufferCount,
+		VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
+		VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
+	};
+
+	stagingBuffer.map();
+	stagingBuffer.writeToBuffer((void *)computeBufferData.data());
+	std::unique_ptr<Buffer> storageBuffer;
+
+	// Copy initial particle data to all storage buffers
+
+	storageBuffer = std::make_unique<Buffer>(
+		device,
+		bufferItemSize,
+		bufferCount,
+		VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_VERTEX_BUFFER_BIT |
+			VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
+		VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT | VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT);
+
+	device.copyBuffer(stagingBuffer.getBuffer(), storageBuffer->getBuffer(), bufferSize);
+
+	storageBuffer->map();
+
+	return storageBuffer;
+}
+
 }  // namespace lvr

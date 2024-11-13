@@ -15,17 +15,23 @@ class MaterialManager {
 	MaterialManager &operator=(const MaterialManager &) = delete;
 	MaterialManager(MaterialManager &&) = delete;
 	MaterialManager &operator=(MaterialManager &&) = delete;
-	std::map<id_t, MaterialAsset> materials{};
+	std::map<id_t, MaterialAsset> materialAssets{};
+	std::vector<Material> getMaterials() {
+		std::vector<Material> materials;
+		for (auto &materialAsset : materialAssets) {
+			materials.emplace_back(materialAsset.second.getMaterial());
+		}
+		return materials;
+	}
 
 	const id_t &create(MaterialAsset &materialAsset) {
-		for (auto &material : materials) {
+		for (auto &material : materialAssets) {
 			if (material.second == materialAsset) {
 				return material.first;
 			}
 		}
 		materialAsset.setID(currentId++);
-		materials.emplace(currentId, std::move(materialAsset));
-		return materials.emplace(currentId, std::move(materialAsset)).first->first;
+		return materialAssets.emplace(materialAsset.getID(), std::move(materialAsset)).first->first;
 	}
 
    private:

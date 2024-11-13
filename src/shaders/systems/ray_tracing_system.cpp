@@ -14,13 +14,16 @@ RayTracingSystem::RayTracingSystem(Device& device, VkRenderPass renderPass, VkEx
 		DescriptorSetLayout::Builder(device)
 			.addBinding(0, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, VK_SHADER_STAGE_COMPUTE_BIT)
 			.addBinding(1, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, VK_SHADER_STAGE_COMPUTE_BIT)
-			.addBinding(2, VK_DESCRIPTOR_TYPE_STORAGE_IMAGE, VK_SHADER_STAGE_COMPUTE_BIT)
+			.addBinding(2, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, VK_SHADER_STAGE_COMPUTE_BIT)
 			.addBinding(3, VK_DESCRIPTOR_TYPE_STORAGE_IMAGE, VK_SHADER_STAGE_COMPUTE_BIT)
+			.addBinding(4, VK_DESCRIPTOR_TYPE_STORAGE_IMAGE, VK_SHADER_STAGE_COMPUTE_BIT)
 			.build());
-	materialManager = std::make_unique<MaterialManager>(device);
+
 	createSpheres();
 	createUniformBuffers();
-	spheresBuffers = computeShader->createShaderStorageBuffers<Sphere>(spheres);
+	sphereBuffer = computeShader->createShaderStorageBuffer<Sphere>(spheres);
+	materialBuffer =
+		computeShader->createShaderStorageBuffer<Material>(materialManager.getMaterials());
 	createImage();
 }
 
@@ -42,13 +45,15 @@ void RayTracingSystem::dispatchCompute(FrameInfo& frameInfo, VkCommandBuffer com
 	auto imageInfoLastFrame =
 		images[abs((frameInfo.frameIndex - 1) % SwapChain::MAX_FRAMES_IN_FLIGHT)]->getImageInfo();
 	auto imageInfo = images[frameInfo.frameIndex]->getImageInfo();
-	auto bufferInfoCurrentFrame = spheresBuffers[frameInfo.frameIndex]->descriptorInfo();
+	auto sphereBufferInfo = sphereBuffer->descriptorInfo();
+	auto materialBufferInfo = materialBuffer->descriptorInfo();
 
 	DescriptorWriter(*computeShader->getComputeShaderLayout(), frameInfo.frameDescriptorPool)
 		.writeBuffer(0, &bufferInfoubo)
-		.writeBuffer(1, &bufferInfoCurrentFrame)
-		.writeImage(2, &imageInfoLastFrame)
-		.writeImage(3, &imageInfo)
+		.writeBuffer(1, &sphereBufferInfo)
+		.writeBuffer(2, &materialBufferInfo)
+		.writeImage(3, &imageInfoLastFrame)
+		.writeImage(4, &imageInfo)
 		.build(computeDescriptorSet);
 
 	computeShader->dispatchComputeShader(
@@ -96,6 +101,12 @@ void RayTracingSystem::updateUniformBuffers(FrameInfo& frameInfo, int32_t frameI
 	ubo.inverseProjectionMatrix = glm::inverse(frameInfo.camera.getProjection());
 	ubo.frameIndex = frameIndex;
 	uniformBuffers[frameInfo.frameIndex]->writeToBuffer(&ubo);
+}
+
+void RayTracingSystem::updateSpherePosition(FrameInfo& frameInfo) {
+	auto& sphere = spheres[3];
+	sphere.center.x = 2.0f * glm::sin(frameInfo.frameIndex) * frameInfo.frameTime;
+	sphereBuffer->writeToBuffer(&sphere, sizeof(sphere), sizeof(sphere) * 3);
 }
 
 void RayTracingSystem::createPipelineLayout() {
@@ -151,7 +162,7 @@ void RayTracingSystem::createUniformBuffers() {
 }
 
 void RayTracingSystem::createSpheres() {
-	spheres.reserve(SPHERE_COUNT);
+	// spheres.reserve(SPHERE_COUNT);
 	std::default_random_engine rndEngine((unsigned)time(nullptr));
 	std::uniform_real_distribution<float> rndDist(0.0f, 1.0f);
 
@@ -159,17 +170,16 @@ void RayTracingSystem::createSpheres() {
 		Sphere sphere;
 		sphere.center = {0.0f, 11.0f, -5.0f};
 		sphere.radius = 10.0f;
-		sphere.color = glm::vec3(0.82f, 0.5f, 0.2f);
 
 		MaterialAsset materialAsset;
-		materialAsset.setAlbedo(glm::vec3(0.82f, 0.5f, 0.2f));
-		materialAsset.setEmissiveColor(glm::vec3(0.82f, 0.5f, 0.2f));
-		materialAsset.setEmissiveStrength(0.5f);
-		materialAsset.setRoughness(0.5f);
-		materialAsset.setMetalness(0.5f);
+		materialAsset.setAlbedo(glm::vec3(1.0f, 1.0f, 1.0f));
+		materialAsset.setEmissiveColor(glm::vec3(1.0f, 1.0f, 1.0f));
+		materialAsset.setEmissiveStrength(3.0f);
+		materialAsset.setRoughness(1.0f);
+		materialAsset.setMetalness(0.0f);
 		materialAsset.setRefractiveIndex(1.0f);
 
-		sphere.materialID = materialManager->create(materialAsset);
+		sphere.materialID = materialManager.create(materialAsset);
 		spheres.emplace_back(sphere);
 	}
 
@@ -177,17 +187,16 @@ void RayTracingSystem::createSpheres() {
 		Sphere sphere;
 		sphere.center = {2.0f, 0.0f, 0.0f};
 		sphere.radius = 1.0f;
-		sphere.color = glm::vec3(0.2f, 0.3f, 1.0f);
 
 		MaterialAsset materialAsset;
-		materialAsset.setAlbedo(glm::vec3(0.82f, 0.5f, 0.2f));
-		materialAsset.setEmissiveColor(glm::vec3(0.82f, 0.5f, 0.2f));
-		materialAsset.setEmissiveStrength(0.5f);
-		materialAsset.setRoughness(0.5f);
-		materialAsset.setMetalness(0.5f);
+		materialAsset.setAlbedo(glm::vec3(0.2f, 0.3f, 1.0f));
+		materialAsset.setEmissiveColor(glm::vec3(0.2f, 0.3f, 1.0f));
+		materialAsset.setEmissiveStrength(0.0f);
+		materialAsset.setRoughness(0.0f);
+		materialAsset.setMetalness(1.0f);
 		materialAsset.setRefractiveIndex(1.0f);
 
-		sphere.materialID = materialManager->create(materialAsset);
+		sphere.materialID = materialManager.create(materialAsset);
 		spheres.emplace_back(sphere);
 	}
 
@@ -195,17 +204,16 @@ void RayTracingSystem::createSpheres() {
 		Sphere sphere;
 		sphere.center = {0.0f, -101.0f, 0.0f};
 		sphere.radius = 100.0f;
-		sphere.color = glm::vec3(1.0f, 0.0f, 1.0f);
 
 		MaterialAsset materialAsset;
-		materialAsset.setAlbedo(glm::vec3(0.82f, 0.5f, 0.2f));
-		materialAsset.setEmissiveColor(glm::vec3(0.82f, 0.5f, 0.2f));
-		materialAsset.setEmissiveStrength(0.5f);
-		materialAsset.setRoughness(0.5f);
-		materialAsset.setMetalness(0.5f);
+		materialAsset.setAlbedo(glm::vec3(1.0f, 0.0f, 1.0f));
+		materialAsset.setEmissiveColor(glm::vec3(1.0f, 0.0f, 1.0f));
+		materialAsset.setEmissiveStrength(0.0f);
+		materialAsset.setRoughness(1.0f);
+		materialAsset.setMetalness(0.0f);
 		materialAsset.setRefractiveIndex(1.0f);
 
-		sphere.materialID = materialManager->create(materialAsset);
+		sphere.materialID = materialManager.create(materialAsset);
 		spheres.emplace_back(sphere);
 	}
 
@@ -213,17 +221,52 @@ void RayTracingSystem::createSpheres() {
 		Sphere sphere;
 		sphere.center = {0.0f, 0.0f, 0.0f};
 		sphere.radius = 1.0f;
-		sphere.color = glm::vec3(1.0f, 1.0f, 1.0f);
 
 		MaterialAsset materialAsset;
-		materialAsset.setAlbedo(glm::vec3(0.82f, 0.5f, 0.2f));
-		materialAsset.setEmissiveColor(glm::vec3(0.82f, 0.5f, 0.2f));
-		materialAsset.setEmissiveStrength(0.5f);
-		materialAsset.setRoughness(0.5f);
+		materialAsset.setAlbedo(glm::vec3(0.5f, 0.9f, 0.1f));
+		materialAsset.setEmissiveColor(glm::vec3(0.5f, 0.9f, 0.1f));
+		materialAsset.setEmissiveStrength(0.0f);
+		materialAsset.setRoughness(0.0f);
 		materialAsset.setMetalness(0.5f);
 		materialAsset.setRefractiveIndex(1.0f);
 
-		sphere.materialID = materialManager->create(materialAsset);
+		sphere.materialID = materialManager.create(materialAsset);
+		spheres.emplace_back(sphere);
+	}
+
+	{
+		Sphere sphere;
+		sphere.center = {-2.0f, 0.0f, 0.0f};
+		sphere.radius = 1.0f;
+
+		MaterialAsset materialAsset;
+		materialAsset.setAlbedo(glm::vec3(1.0f, 1.0f, 1.0f));
+		materialAsset.setEmissiveColor(glm::vec3(1.0f, 1.0f, 1.0f));
+		materialAsset.setEmissiveStrength(0.0f);
+		materialAsset.setRoughness(0.0f);
+		materialAsset.setMetalness(0.5f);
+		materialAsset.setRefractiveIndex(1.5f);
+		materialAsset.setTransparent(1);
+
+		sphere.materialID = materialManager.create(materialAsset);
+		spheres.emplace_back(sphere);
+	}
+
+	{
+		Sphere sphere;
+		sphere.center = {-2.0f, 0.0f, 0.0f};
+		sphere.radius = 0.9f;
+
+		MaterialAsset materialAsset;
+		materialAsset.setAlbedo(glm::vec3(1.0f, 1.0f, 1.0f));
+		materialAsset.setEmissiveColor(glm::vec3(1.0f, 1.0f, 1.0f));
+		materialAsset.setEmissiveStrength(0.0f);
+		materialAsset.setRoughness(0.0f);
+		materialAsset.setMetalness(0.5f);
+		materialAsset.setRefractiveIndex(1.0f / 1.5f);
+		materialAsset.setTransparent(1);
+
+		sphere.materialID = materialManager.create(materialAsset);
 		spheres.emplace_back(sphere);
 	}
 }
