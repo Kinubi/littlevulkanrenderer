@@ -14,4 +14,4 @@ fi
 
 # Build LVR
 	premake5 gmake2 --cc=gcc --verbose
-	make config=$(echo "$BUILD_CONFIG" | tr '[:upper:]' '[:lower:]') "$2"
+	make -j$($(nproc)) config=$(echo "$BUILD_CONFIG" | tr '[:upper:]' '[:lower:]') "$2"
